@@ -63,4 +63,7 @@ Without `db` or `user` the game still plays; those features just switch off.
 
 `docs/index.html` is the same page, served at https://eseto9.github.io/Whereabouts/ when
 Pages is set to deploy from the `main` branch, `/docs` folder. There is no Claude runtime
-there, so it plays single-player: no rooms, no daily board, coins saved in that browser only.
+there, so multiplayer goes through a free public MQTT relay instead (see the end of
+`src/js/17-net.js`; it falls back through three relays). Anyone who knows a room code could
+listen in on that room, so nothing private is sent. The daily board and the shared wallet
+still need Claude: on Pages, coins and bought clothes are saved in that browser only.

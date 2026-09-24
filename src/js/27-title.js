@@ -167,6 +167,7 @@ function joinRoom(code,fresh){
   sys('Find things to earn 🪙 coins (faster finds earn more), then spend them at the Bean Boutique in Market Street.');
   sendPresence(true);renderAll();tryLock();
   roomDocWatch(code);if(fresh)roomDocPrune();
+  if(Net.web)setTimeout(()=>{if(myCode===code&&Net.room.status()!=='online')sys('Can’t reach the online server right now, so this room is solo. Try again in a minute.');},12000);
 }
 $('#createBtn').addEventListener('click',()=>joinRoom(genCode(),true));
 $('#joinBtn').addEventListener('click',()=>{const c=clean($('#codeIn').value,4).toUpperCase();if(!/^[A-Z]{4}$/.test(c)){$('#netNote').textContent='Room codes are 4 letters, like KMPX.';$('#netNote').classList.add('err');$('#codeIn').focus();return;}joinRoom(c);});

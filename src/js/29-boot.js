@@ -11,4 +11,4 @@ async function boot(){
   requestAnimationFrame(frame);
 }
 boot();
-window.__wb={spySelect,W,P,get G(){return G;},H,startGame,clickAt,makeLadder,locationLine,letterLine,onMsg,commit,joinRoom,players,frame,districtAt,objCenter,Remote,Wallet,dailyPlan,Daily,Cloud,enableTouch,joy};
+window.__wb={spySelect,W,P,get G(){return G;},H,startGame,clickAt,makeLadder,locationLine,letterLine,onMsg,commit,joinRoom,players,frame,districtAt,objCenter,Remote,emit,Wallet,dailyPlan,Daily,Cloud,enableTouch,joy};
