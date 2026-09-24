@@ -377,10 +377,11 @@ kbd{font-family:var(--body);font-weight:900;background:var(--paper);color:var(--
 .mapKey{margin:0;font-weight:800;font-size:13px;color:var(--muted)}
 @media (max-height:520px){.mapKey{display:none}#mapView{padding:4px}}
 /* phones: chat lives in the top-right corner, the newest line shows as plain text */
-#chatBtn,#chatLast{display:none}
+#chatBtn,#chatLast,#mapBtn{display:none}
 .touch #chatBtn{display:block;position:absolute;right:calc(14px + env(safe-area-inset-right,0px));top:calc(8px + env(safe-area-inset-top,0px));width:42px;height:42px;border-radius:50%;border:3px solid var(--ink);background:var(--glass);font-size:19px;padding:0;box-shadow:2px 2px 0 var(--ink)}
 .touch #chatBtn[aria-pressed=true]{background:var(--sun)}
-.touch #chatLast{display:block;position:absolute;right:calc(66px + env(safe-area-inset-right,0px));top:calc(18px + env(safe-area-inset-top,0px));max-width:min(360px,42%);text-align:right;font-weight:900;font-size:13px;color:#fff;
+.touch #mapBtn{display:block;position:absolute;right:calc(64px + env(safe-area-inset-right,0px));top:calc(8px + env(safe-area-inset-top,0px));width:42px;height:42px;border-radius:50%;border:3px solid var(--ink);background:var(--glass);font-size:19px;padding:0;box-shadow:2px 2px 0 var(--ink)}
+.touch #chatLast{display:block;position:absolute;right:calc(116px + env(safe-area-inset-right,0px));top:calc(18px + env(safe-area-inset-top,0px));max-width:min(360px,42%);text-align:right;font-weight:900;font-size:13px;color:#fff;
   text-shadow:0 1px 2px #2B2040,0 0 3px #2B2040,1px 0 2px #2B2040,-1px 0 2px #2B2040;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;opacity:0;transition:opacity .6s;pointer-events:none}
 .touch #chatLast.on{opacity:1;pointer-events:auto}
 .touch #chat,.touch #chat.peek{display:none}
@@ -526,7 +527,6 @@ kbd{font-family:var(--body);font-weight:900;background:var(--paper);color:var(--
   <div id="touchUI" hidden>
     <div id="joy" role="application" aria-label="Walk: drag the stick"><div id="joyKnob"></div></div>
     <div id="tbtns">
-      <button class="tb" data-act="map" aria-label="Map">🗺️</button>
       <button class="tb jump" data-act="board" aria-label="Hoverboard" aria-pressed="false">🛹 Board</button>
     </div>
   </div>
@@ -534,6 +534,7 @@ kbd{font-family:var(--body);font-weight:900;background:var(--paper);color:var(--
   <canvas id="miniMap" width="232" height="168" aria-label="Map: click to open" role="button"></canvas>
   <div id="mapView" hidden><div class="mapBox panel"><canvas id="mapBig" width="824" height="592" aria-label="Map of the island"></canvas>
     <button id="mapClose" class="exitBtn" type="button">✕ Close map</button><p class="mapKey">You’re the arrow. A glowing name is where the clue says to look.</p></div></div>
+  <button id="mapBtn" type="button" aria-label="Map">🗺️</button>
   <button id="chatBtn" type="button" aria-label="Chat">💬</button>
   <div id="chatLast" role="button" aria-label="Open the chat"></div>
   <div id="chat">
@@ -796,6 +797,8 @@ function ribbon(pts,w,mat,closed,yo){
   g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));
   g.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2));
   g.setIndex(idx); g.computeVertexNormals();
+  // flat layers on the ground: the higher it sits, the more it's pulled towards the camera, so overlaps never flicker
+  if(!mat.polygonOffset){mat.polygonOffset=true;mat.polygonOffsetFactor=-1-yo*40;mat.polygonOffsetUnits=-2-yo*80;}
   const m=new THREE.Mesh(g,mat); m.receiveShadow=true; scene.add(m); W.pickables.push(m); return m;
 }
 
@@ -1225,8 +1228,8 @@ function buildMarket(){
     W.movers.push(t=>{const u=t*0.4+i*2;g.position.set(cx+Math.sin(u)*3+Math.sin(u*2.3),landH(cx,cz)+1.6+Math.sin(u*3)*0.5,cz+Math.cos(u*0.8)*2.4);
       const f=Math.sin(t*18+i)*1.1;lp.rotation.z=f;rp.rotation.z=-f;lp.rotation.x=rp.rotation.x=-Math.PI/2;g.rotation.y=u;});};
   bfly('#4D96FF',25,-8,true,0); bfly('#FFD23F',40,7.5,false,1); bfly('#F15BB5',-40,18,false,2); bfly('#FF9F1C',-24,-6,false,3);
-  // flower pots along the street
-  [[21,-8],[27,-8],[21,8],[27,8],[55,-5],[55,5]].forEach(([x,z],i)=>{const g=new THREE.Group();g.add(at(cyl(0.45,0.35,0.6,'#C8703F',8),0,0.3,0));g.add(at(sph(0.5,'#4CB85A',7,5),0,0.9,0));g.add(at(sph(0.15,['#FF5D73','#FFD23F','#F15BB5'][i%3],5,4,{w:0.02}),0.2,1.25,0.2));
+  // flower pots along the street (on the grass, clear of the road and the paving)
+  [[21,-8],[30.5,-8.4],[21,8],[30.5,8.4],[53.5,-7.6],[53.5,7.6]].forEach(([x,z],i)=>{const g=new THREE.Group();g.add(at(cyl(0.45,0.35,0.6,'#C8703F',8),0,0.3,0));g.add(at(sph(0.5,'#4CB85A',7,5),0,0.9,0));g.add(at(sph(0.15,['#FF5D73','#FFD23F','#F15BB5'][i%3],5,4,{w:0.02}),0.2,1.25,0.2));
     onGround(g,x,z);F(g,{k:'pot',n:'a flower pot',c:['green'],s:'round',m:'clay',p:false});circ(x,z,0.5);});
 }
 
@@ -1714,8 +1717,8 @@ function dirtTex(){
 function buildFarm(){
   // Farm Lane: Market Street runs on as a dirt lane out to the countryside
   {const m=MT(dirtTex());
-   ribbon(dense([[55,0],[70,0.6],[86,-0.4],[104,0.3]],1.5),5,m,false,0.06);
-   ribbon(dense([[75,1],[75,6],[75.3,11.5]],1),3,m,false,0.065);}
+   ribbon(dense([[56.6,0],[70,0.6],[86,-0.4],[104,0.3]],1.5),5,m,false,0.045);
+   ribbon(dense([[75,2.4],[75,6],[75.3,11.5]],1),3,m,false,0.05);}
   // fence around the farmyard (scenery)
   {const g=new THREE.Group();const x0=FX(29),x1=FX(49),z0=FZ(15),z1=FZ(29);const rail='#E8D5B5';
    const side=(ax,az,bx,bz)=>{const L=Math.hypot(bx-ax,bz-az),a=Math.atan2(bz-az,bx-ax);
@@ -1990,7 +1993,7 @@ function buildExtras(){
    place(g,29,7.8,0.8,{k:'bike',n:'the bike with a basket',c:['green','brown'],s:'wheely',m:'metal',v:'ready for a ride',snd:'ring-ring',u:'ride to the market on',e:'🚲🧺🥖',r:['I have two wheels, pedals, and a basket for your baguette.']},{ry:0.2});}
   {const g=new THREE.Group();g.add(at(box(0.9,0.55,0.55,'#C8D4E0',{w:0.015}),0,0.75,0));for(const x of[-0.35,0.35])for(const z of[-0.2,0.2])g.add(at(sph(0.06,'#2B2040',5,4,{ol:false}),x,0.08,z));
    for(const x of[-0.35,0.35])g.add(at(box(0.04,0.5,0.04,'#C8D4E0',{ol:false}),x,0.35,0));g.add(at(box(0.6,0.04,0.04,'#E8323F',{ol:false}),0,1.1,-0.35));
-   place(g,25,6.5,0.6,{k:'trolley',n:'the shopping trolley',c:['silver','red'],s:'boxy',m:'metal',v:'a bit wobbly',snd:'rattle',u:'wheel your shopping in',e:'🛒🍎🥕',r:['I have four wobbly wheels and a basket you push around the shops.']},{solid:false,ry:0.6});}
+   place(g,36.6,7.9,0.6,{k:'trolley',n:'the shopping trolley',c:['silver','red'],s:'boxy',m:'metal',v:'a bit wobbly',snd:'rattle',u:'wheel your shopping in',e:'🛒🍎🥕',r:['I have four wobbly wheels and a basket you push around the shops.']},{solid:false,exact:true,ry:0.6});}
   {const g=G_(at(box(0.08,1.2,0.5,'#8B5E3C',{ol:false}),0,0.6,-0.3),at(box(0.08,1.2,0.5,'#8B5E3C',{ol:false}),0,0.6,0.3));g.children[0].rotation.x=0.3;g.children[1].rotation.x=-0.3;
    const t=canvasTex(128,160,(x)=>{x.fillStyle='#2B2040';x.fillRect(0,0,128,160);x.fillStyle='#FFFFFF';x.font='22px "Lilita One",sans-serif';x.textAlign='center';['SPECIALS','Apples 2','Cheese 5','Fish 4'].forEach((s,i)=>x.fillText(s,64,34+i*34));});
    const b=new THREE.Mesh(new THREE.BoxGeometry(0.05,0.9,0.7),[M('#8B5E3C'),MT(t),M('#8B5E3C'),M('#8B5E3C'),M('#8B5E3C'),M('#8B5E3C')]);b.position.set(0.05,0.8,0.28);b.rotation.x=-0.3;outline(b,0.02);g.add(b);
@@ -2633,20 +2636,20 @@ const darker=(c,k)=>new THREE.Color(c).multiplyScalar(k||0.82).getStyle();
 function shell(y0,y1,mat,flare,hemCol){
   const pts=[];const n=14,off=0.03;
   for(let i=0;i<=n;i++){const y=lerp(y0,y1,i/n);pts.push(new THREE.Vector2(bodyR(y)+off+(flare||0)*(1-i/n)**2,y));}
-  const g=new THREE.Group();g.add(mk(new THREE.LatheGeometry(pts,32),null,{mat,w:0.022}));
+  const g=new THREE.Group();g.add(mk(new THREE.LatheGeometry(pts,32),null,{mat,ol:false}));
   if(hemCol!==false)g.add(ring(y0+0.015,bodyR(y0+0.015)+off+(flare||0),0.028,hemCol||mat));
   return g;
 }
 // a rolled edge around the body at height y
 function ring(y,r,tube,matOrCol){
   const t=new THREE.Mesh(new THREE.TorusGeometry(r,tube,6,32),matOrCol&&matOrCol.isMaterial?matOrCol:M(matOrCol));
-  t.rotation.x=Math.PI/2;t.position.y=y;t.castShadow=true;return t;
+  t.rotation.x=Math.PI/2;t.position.y=y;return t;   // trims don't cast shadows: tiny ones striped the cloth
 }
 const neck=(col,thick)=>ring(0.86,bodyR(0.86)+0.02,thick||0.035,col);
 // sleeves are puffy capsules over the arm: short ones cap the shoulder, long ones stop at the wrist with a cuff
 function sleeves(arms,mat,long,cuffCol){
   for(const a of arms){
-    const s=mk(new THREE.CapsuleGeometry(long?0.178:0.19,long?0.2:0.08,5,12),null,{mat,w:0.022});s.position.y=long?-0.2:-0.1;a.add(s);
+    const s=mk(new THREE.CapsuleGeometry(long?0.18:0.2,long?0.2:0.12,5,12),null,{mat,w:0.018});s.position.y=long?-0.2:-0.12;a.add(s);
     if(long){const c=new THREE.Mesh(new THREE.TorusGeometry(0.165,0.035,6,16),cuffCol&&cuffCol.isMaterial?cuffCol:M(cuffCol||'#FFFFFF'));c.rotation.x=Math.PI/2;c.position.y=-0.44;a.add(c);}
   }
 }
@@ -2712,7 +2715,7 @@ function dressBean(body,arms,feet,fit,col){
     if(fit.t==='hoodie'){
       // a hood lying round the back of the neck, a pouch pocket and drawstrings
       const hood=new THREE.Mesh(new THREE.TorusGeometry(0.42,0.12,8,24,Math.PI*1.25),mat);hood.rotation.set(Math.PI/2-0.25,0,Math.PI*0.125+Math.PI);hood.position.set(0,0.93,-0.05);hood.castShadow=true;body.add(hood);
-      const pk=mk(new THREE.CylinderGeometry(bodyR(0.56)+0.045,bodyR(0.56)+0.045,0.2,24,1,true,-0.55,1.1),null,{mat:M(trim),ol:false});pk.position.y=0.56;pk.material=new THREE.MeshToonMaterial({color:trim,gradientMap:gradTex,side:THREE.DoubleSide});body.add(pk);
+      const pk=mk(new THREE.CylinderGeometry(bodyR(0.56)+0.045,bodyR(0.56)+0.045,0.2,24,1,true,-0.55,1.1),null,{mat:M(trim),ol:false,shadow:false});pk.position.y=0.56;pk.material=new THREE.MeshToonMaterial({color:trim,gradientMap:gradTex,side:THREE.DoubleSide});body.add(pk);
       for(const s of[-1,1])body.add(at(cyl(0.016,0.016,0.2,'#FFFFFF',5,{ol:false}),0.09*s,0.77,bodyR(0.77)+0.05));
       body.add(neck(trim,0.04));
     }
@@ -2740,8 +2743,8 @@ function dressBean(body,arms,feet,fit,col){
     }
     else{
       body.add(shell(0.16,0.52,mat,0,darker(bc)));
-      if(fit.b==='pants'||fit.b==='overalls')for(const f of feet){onFoot(f,mk(new THREE.CylinderGeometry(0.16,0.17,0.3,12),null,{mat,w:0.02}),0,0.22,-0.03,1,1,1);onFoot(f,new THREE.Mesh(new THREE.TorusGeometry(0.165,0.03,6,16),M(darker(bc))),0,0.08,-0.03,1,1,1).rotation.x=Math.PI/2;}
-      if(fit.b==='shorts')for(const f of feet)onFoot(f,mk(new THREE.CylinderGeometry(0.165,0.17,0.12,12),null,{mat,w:0.02}),0,0.31,-0.03,1,1,1);
+      if(fit.b==='pants'||fit.b==='overalls')for(const f of feet){onFoot(f,mk(new THREE.CylinderGeometry(0.16,0.17,0.3,12),null,{mat,ol:false}),0,0.22,-0.03,1,1,1);onFoot(f,new THREE.Mesh(new THREE.TorusGeometry(0.165,0.03,6,16),M(darker(bc))),0,0.08,-0.03,1,1,1).rotation.x=Math.PI/2;}
+      if(fit.b==='shorts')for(const f of feet)onFoot(f,mk(new THREE.CylinderGeometry(0.165,0.17,0.12,12),null,{mat,ol:false}),0,0.31,-0.03,1,1,1);
       if(fit.b==='overalls'){
         const bib=mk(new THREE.CylinderGeometry(bodyR(0.66)+0.04,bodyR(0.66)+0.04,0.32,24,1,true,-0.6,1.2),null,{mat:new THREE.MeshToonMaterial({color:bc,gradientMap:gradTex,side:THREE.DoubleSide}),ol:false});bib.position.y=0.66;body.add(bib);
         const pk=box(0.18,0.1,0.02,darker(bc),{ol:false});pk.position.set(0,0.68,bodyR(0.68)+0.05);body.add(pk);
@@ -4185,7 +4188,7 @@ $('#tbtns').addEventListener('pointerdown',e=>{
   const a=b.dataset.act;
   if(a==='board'){e.preventDefault();setBoard(!P.board);}
 });
-$('#tbtns').addEventListener('click',e=>{const b=e.target.closest('button');if(b&&b.dataset.act==='map')setMap(!MAP.open);});
+$('#mapBtn').addEventListener('click',()=>setMap(!MAP.open));
 // chat sits top-right on phones: the button opens it (a real tap, so the keyboard can come up),
 // tapping the last line opens the whole chat to read without the keyboard
 function chatOpen(on,typing){
@@ -4841,7 +4844,7 @@ $('#coinBtn').addEventListener('click',()=>openWardrobe('shop'));
 $('#doneBtn').addEventListener('click',closeWardrobe);
 
 // Live 3D preview of your Wanderbean (its own little renderer); shows a shop item you're trying on
-const Prev={r:null,scene:new THREE.Scene(),cam:new THREE.PerspectiveCamera(26,150/210,0.1,50),bean:null,running:false,
+const Prev={r:null,scene:new THREE.Scene(),cam:new THREE.PerspectiveCamera(26,150/210,0.1,50),bean:null,running:false,yaw:0,held:-1e9,drag:null,
   dress(){
     if(!this.r)return;
     if(this.bean)this.scene.remove(this.bean);
@@ -4853,7 +4856,8 @@ const Prev={r:null,scene:new THREE.Scene(),cam:new THREE.PerspectiveCamera(26,15
     if($('#title').hidden){this.running=false;return;}
     requestAnimationFrame(t=>this.frame(t));
     const ts=now/1000;
-    this.bean.rotation.y=Math.sin(ts*0.7)*0.9;
+    // you can spin it by dragging; a few seconds after letting go it starts gently swaying again
+    const idle=clamp((now-this.held-2500)/1500,0,1);this.bean.rotation.y=this.yaw+Math.sin(ts*0.7)*0.9*idle;
     const tr=Setup.trial||'';animBean(this.bean,{an:0,hb:tr.startsWith('ride:')},ts);
     this.r.render(this.scene,this.cam);
   },
@@ -4879,6 +4883,11 @@ try{
   const l=new THREE.DirectionalLight(0xFFE0B0,1.0);l.position.set(-2,3,4);Prev.scene.add(l);
   Prev.cam.position.set(0,1.45,7);Prev.cam.lookAt(0,1.12,0);
 }catch(e){Prev.r=null;$('#beanPrev').hidden=true;}
+{const cv=$('#beanPrev');cv.style.touchAction='none';cv.style.cursor='grab';
+ cv.addEventListener('pointerdown',e=>{Prev.drag={id:e.pointerId,x:e.clientX};Prev.held=performance.now();if(Prev.bean)Prev.yaw=Prev.bean.rotation.y;try{cv.setPointerCapture(e.pointerId);}catch(err){}cv.style.cursor='grabbing';});
+ cv.addEventListener('pointermove',e=>{const d=Prev.drag;if(!d||d.id!==e.pointerId)return;Prev.yaw+=(e.clientX-d.x)*0.025;d.x=e.clientX;Prev.held=performance.now();});
+ const up=e=>{if(Prev.drag&&Prev.drag.id===e.pointerId){Prev.drag=null;Prev.held=performance.now();cv.style.cursor='grab';}};
+ cv.addEventListener('pointerup',up);cv.addEventListener('pointercancel',up);}
 renderSetup();
 
 function genCode(){const A='ABCDEFGHJKMNPQRSTUVWXYZ';let s='';for(let i=0;i<4;i++)s+=A[Math.floor(Math.random()*A.length)];return s;}
@@ -4985,10 +4994,13 @@ function cullTick(dt){
   }
 }
 // the sun's shadow box follows you (sharper shadows, and the whole island fits the old budget)
+const SH_R=new V3().crossVectors(new V3(0,1,0),SUN_DIR).normalize(),SH_U=new V3().crossVectors(SUN_DIR,SH_R).normalize(),SH_T=new V3();
 function shadowFollow(x,z,ext){
   const c=sun.shadow.camera;if(c.right!==ext){c.left=c.bottom=-ext;c.right=c.top=ext;c.updateProjectionMatrix();}
-  const q=2*ext/GFX.smap*4;x=Math.round(x/q)*q;z=Math.round(z/q)*q;   // step in whole texels so edges don't crawl
-  sun.target.position.set(x,0,z);sun.position.set(x+SUN_DIR.x*140,SUN_DIR.y*140,z+SUN_DIR.z*140);
+  const tx=2*ext/GFX.smap,t=SH_T.set(x,0,z);
+  const a=Math.round(t.dot(SH_R)/tx)*tx,b=Math.round(t.dot(SH_U)/tx)*tx,d=t.dot(SUN_DIR);   // whole texels along the light's own axes
+  t.copy(SH_R).multiplyScalar(a).addScaledVector(SH_U,b).addScaledVector(SUN_DIR,d);
+  sun.target.position.copy(t);sun.position.copy(t).addScaledVector(SUN_DIR,140);
 }
 let last=performance.now(),gullT=4,frameN=0;
 function frame(now){
