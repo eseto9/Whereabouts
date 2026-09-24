@@ -426,6 +426,23 @@ button.code:hover{filter:brightness(1.06)}
 .board li small{color:var(--muted);font-size:12px}
 .board li.me small{color:#2B2040}
 .board li:has(>small) b{text-align:right}
+#hotBtn{display:block;margin:6px auto 0;border:2px solid var(--ink);border-radius:999px;background:var(--paper);color:var(--text);font-weight:900;font-size:12.5px;padding:3px 12px}
+#hotBtn:hover{background:#FFE9A8;color:#2B2040}
+.touch #hotBtn{margin-top:3px;font-size:11px;padding:2px 10px}
+#teamPick{margin:8px 0 4px}
+.teamCols{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.teamCol{border:2px solid var(--ink);border-radius:12px;padding:6px;display:flex;flex-direction:column;gap:4px;min-height:54px}
+.teamCol.red{background:rgba(255,93,115,.16)}
+.teamCol.blue{background:rgba(77,150,255,.16)}
+.teamCol>b{font-family:var(--display);font-weight:400;font-size:15px}
+.teamCol>div{display:flex;flex-direction:column;gap:4px}
+.teamCol small{color:var(--muted);font-weight:700;font-size:12px}
+.tchip{display:flex;align-items:center;gap:6px;text-align:left;border:2px solid var(--ink);border-radius:999px;background:var(--paper);color:var(--text);font-weight:800;font-size:13px;padding:2px 9px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.tchip i{width:11px;height:11px;border-radius:50%;border:1.5px solid #2B2040;flex:none}
+.tchip:disabled{cursor:default;opacity:1}
+.teamFoot{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:6px}
+.teamFoot small{color:var(--muted);font-weight:700;font-size:12px}
+.teamFoot .btn{padding:.3em .8em;font-size:13px}
 </style>
 </head>
 <body>
@@ -507,6 +524,7 @@ button.code:hover{filter:brightness(1.06)}
       <ul id="clueHints"></ul>
       <button id="clueMore" type="button" hidden></button>
       <div class="pips" id="pips"></div>
+      <button id="hotBtn" type="button" hidden aria-pressed="false">🌡️ Hot/cold: off</button>
       <div id="hot" hidden><span aria-hidden="true">🧊</span><div class="hotbar"><i></i></div><span aria-hidden="true">🔥</span><small id="hotLbl" aria-live="polite"></small></div>
     </div>
   </div>
@@ -533,11 +551,16 @@ button.code:hover{filter:brightness(1.06)}
       <div class="seg" id="teamSeg">
         <button data-teams="0">🤝 One team</button><button data-teams="1">🔴 vs 🔵</button>
       </div>
+      <div id="teamPick" hidden>
+        <div class="teamCols"><div class="teamCol red"><b>🔴 Red</b><div id="teamR"></div></div><div class="teamCol blue"><b>🔵 Blue</b><div id="teamB"></div></div></div>
+        <div class="teamFoot"><small id="teamTip"></small><button class="btn alt" id="teamShuffle" type="button">🔀 Shuffle</button></div>
+      </div>
+      <div id="modeOpts">
       <div class="lbl">Who writes the clues</div>
       <div class="seg" id="modeSeg">
         <button data-mode="game">The game</button>
         <button data-mode="player">Players</button>
-        <button data-mode="alt">Take turns</button>
+      </div>
       </div>
       <div class="lbl">Clues per game</div>
       <div class="seg" id="totalSeg">
@@ -4035,12 +4058,12 @@ function pediaAdd(name){
 const PROUND_MS=120000,PICK_MS=45000,REVEAL_MS=5500,UNSOLVED_MS=8000,SESSION_PER=75000;
 // start: clue lines shown up front; lines: most lines a game clue grows to
 const DIFF={
-  easy:{label:'Easy',hint:15000,round:120000,mult:0.5,start:2,lines:4,hot:0},
-  normal:{label:'Normal',hint:20000,round:95000,mult:1,start:1,lines:4,hot:30000},
-  hard:{label:'Hard',hint:28000,round:90000,mult:2,start:1,lines:3,hot:45000},
+  easy:{label:'Easy',hint:15000,round:120000,mult:0.5,start:2,lines:4},
+  normal:{label:'Normal',hint:20000,round:95000,mult:1,start:1,lines:4},
+  hard:{label:'Hard',hint:28000,round:90000,mult:2,start:1,lines:3},
 };
 const diffOf=()=>DIFF[G.diff]||DIFF.normal;
-function freshState(){return {teams:false,tm:{},ts:{r:0,b:0},hs:false,hider:null,hiderName:'',pts:{},pnames:{},tp:null,phase:'lobby',mode:'alt',total:8,diff:'normal',daily:'',idx:0,score:0,found:0,streak:0,best:0,sessLeft:0,roundLeft:0,hintIn:0,lines:[],kind:'game',spy:null,spyName:'',mv:false,finds:[],reveal:null,dailyMsg:'',r:0,v:0,hostPeer:null};}
+function freshState(){return {teams:false,tm:{},ts:{r:0,b:0},hs:false,hider:null,hiderName:'',pts:{},pnames:{},tp:null,phase:'lobby',mode:'game',hot:false,total:8,diff:'normal',daily:'',idx:0,score:0,found:0,streak:0,best:0,sessLeft:0,roundLeft:0,hintIn:0,lines:[],kind:'game',spy:null,spyName:'',mv:false,finds:[],reveal:null,dailyMsg:'',r:0,v:0,hostPeer:null};}
 let G=freshState();G._recv=Date.now();
 const H={target:null,obj:null,ladder:null,fmtLast:null,used:new Set(),plan:null,wrong:false,sessEnd:0,roundEnd:0,nextHintAt:0,pickEnd:0,revealEnd:0,clueStart:0,spyRot:0,lastSync:0,lastTick:0,findIdx:-1};
 const Spy={target:null,r:-1};
@@ -4055,7 +4078,7 @@ function commit(){
   const now=Date.now();
   G.hostPeer=myPeer();G.v=(G.v||0)+1;
   const inPlay=G.phase!=='lobby'&&G.phase!=='recap';
-  if(G.teams&&inPlay)assignTeams();
+  if(G.teams&&G.phase!=='recap')assignTeams();
   G.sessLeft=inPlay?Math.max(0,H.sessEnd-now):0;
   G.roundLeft=!inPlay?0:Math.max(0,(G.phase==='pick'?H.pickEnd:G.phase==='reveal'?H.revealEnd:G.phase==='hide'?H.hideEnd:G.phase==='seek'?H.seekEnd:H.roundEnd)-now);
   G.hintIn=(G.phase==='clue'&&G.kind==='game'&&G.lines.length<diffOf().lines)?Math.max(0,H.nextHintAt-now):0;
@@ -4071,6 +4094,7 @@ function adoptState(s,recv){
   G.lines=Array.isArray(G.lines)?G.lines.slice(0,4).map(x=>clean(x,160)):[];
   G.finds=Array.isArray(G.finds)?G.finds.slice(0,12):[];
   if(!DIFF[G.diff])G.diff='normal';
+  if(G.mode!=='player')G.mode='game';G.hot=!!G.hot;
   G.tp=Array.isArray(G.tp)&&G.tp.length===2&&G.tp.every(Number.isFinite)?G.tp:null;
   G.daily=typeof G.daily==='string'&&/^\d{4}-\d\d-\d\d$/.test(G.daily)?G.daily:'';
   G.dailyMsg=clean(G.dailyMsg,80);G.dsecs=clamp(Math.round(+G.dsecs||0),0,36000);
@@ -4123,7 +4147,8 @@ function startGame(){
   H.used=new Set();H.spyRot=Math.floor(Math.random()*6);
   if(G.hs){startHideSeek();return;}
   if(G.daily){G.mode='game';G.total=DAILY_N;G.diff='normal';G.teams=false;H.plan=dailyPlan(G.daily);}else H.plan=null;
-  if(G.teams){G.mode='game';G.tm={};G.ts={r:0,b:0};assignTeams();}
+  if(G.teams){G.mode='game';G.ts={r:0,b:0};assignTeams();}   // keeps the teams picked in the lobby
+  G.hot=G.diff==='easy'&&!G.daily;   // the hot/cold meter starts on for Easy; the host can switch it any time
   G.score=0;G.found=0;G.streak=0;G.best=0;G.finds=[];G.dailyMsg='';G.idx=-1;G.dsecs=0;H.gameStart=Date.now();
   H.sessEnd=Date.now()+G.total*SESSION_PER;
   nextClue();
@@ -4134,7 +4159,6 @@ function nextClue(){
   const n=players().length;let kind='game';
   if(!G.daily&&!G.teams){
     if(G.mode==='player'&&n>=2)kind='player';
-    if(G.mode==='alt'&&n>=2&&G.idx%2===1)kind='player';
   }
   if(kind==='game')startGameClue();else startPick();
 }
@@ -4847,6 +4871,8 @@ function renderAll(){
   if(G.phase==='pick'&&(seen.phase!=='pick'||G.r!==seen.r)){if(isSpy){sfx.spy();toast('You’re the Spy!\nClick something to pick it.',2600);}}
   if(G.phase==='clue'&&seen.phase==='pick'&&G.r===seen.r){sfx.clue();toast(`${G.spyName} spies something…`,1500);}
   if(G.phase==='clue'&&G.r===seen.r&&G.lines.length>seen.n&&seen.phase==='clue')sfx.hint();
+  if(G.phase==='clue'&&seen.phase==='clue'&&G.kind==='game'&&G.hot!==seen.hot){sfx.hint();toast(G.hot?'🌡️ Hot/cold is on':'🌡️ Hot/cold is off',1500);}
+  seen.hot=G.hot;
   if(G.phase==='reveal'&&seen.phase!=='reveal'){if(G.reveal&&!G.reveal.found&&!G.reveal.hs){sfx.sad();toast('Time’s up!',1600);buzz(60);}}
   const rid=G.phase==='reveal'&&G.reveal?G.reveal.id:null;
   if(rid!==seen.revealId)setRevealHighlight(rid);
@@ -4911,6 +4937,7 @@ function renderAll(){
     for(const b of $('#huntSeg').children){b.setAttribute('aria-pressed',b.dataset.hunt===hunt);b.disabled=!host;}
     for(const b of $('#teamSeg').children){b.setAttribute('aria-pressed',(b.dataset.teams==='1')===G.teams);b.disabled=!host;}
     for(const b of $('#modeSeg').children)b.disabled=!host||G.teams;
+    $('#modeOpts').hidden=G.teams;renderTeams(host);
     $('#freeOpts').hidden=hunt!=='free';$('#dailyOpts').hidden=hunt!=='daily';$('#hideOpts').hidden=hunt!=='hide';
     $('#startBtn').disabled=G.hs&&n<2;$('#hideNeed').hidden=!(G.hs&&n<2);
     if(G.daily){dailyWatchAny(G.daily);renderBoard($('#dailyBoard'));}
@@ -4959,10 +4986,11 @@ function updateHUDTimers(){
   const inPlay=G.phase==='pick'||G.phase==='clue'||G.phase==='reveal'||G.phase==='hide'||G.phase==='seek';
   // hide & seek: seekers see nothing but a countdown while the hider hides
   const bl=$('#blind'),blind=frozenSeeker();bl.hidden=!blind;if(blind)$('#blindN').textContent=Math.ceil(liveLeft('roundLeft')/1000);
-  // Easy: warmer/colder, from how far you are from the answer
-  const D=G.daily?DIFF.normal:diffOf(),stuck=G.kind==='game'&&D.round-liveLeft('roundLeft')>=D.hot;
-  const hot=$('#hot'),showHot=G.phase==='clue'&&!!G.tp&&stuck;hot.hidden=!showHot;
-  if(showHot&&D.hot&&seen.hotR!==G.r){seen.hotR=G.r;sfx.hint();toast('🌡️ Stuck? The hot/cold meter is on!',2000);}
+  // warmer/colder, from how far you are from the answer: the host switches it on or off for everyone
+  const gameClue=G.phase==='clue'&&!!G.tp&&G.kind==='game';
+  const hot=$('#hot'),showHot=gameClue&&G.hot;hot.hidden=!showHot;
+  const hb=$('#hotBtn');hb.hidden=!(gameClue&&amHost()&&!G.daily);
+  if(!hb.hidden){const t=G.hot?'🌡️ Hot/cold: on (tap to turn off)':'🌡️ Hot/cold: off (tap to turn on)';if(hb.textContent!==t){hb.textContent=t;hb.setAttribute('aria-pressed',G.hot);}}
   if(showHot){const d=Math.hypot(P.pos.x-G.tp[0],P.pos.z-G.tp[1]),heat=clamp(1-(d-3)/50,0,1);
     const i=hot.querySelector('i');i.style.width=(heat*100)+'%';i.style.background=`hsl(${Math.round(200-200*heat)},85%,55%)`;
     const w=heat>0.85?'Boiling!':heat>0.6?'Hot':heat>0.35?'Warm':'Cold';if($('#hotLbl').textContent!==w)$('#hotLbl').textContent=w;}
@@ -5067,6 +5095,29 @@ $('#diffSeg').addEventListener('click',e=>{const b=e.target.closest('button');if
 $('#huntSeg').addEventListener('click',e=>{const b=e.target.closest('button');if(!b||!amHost()||G.phase!=='lobby')return;
   G.hs=b.dataset.hunt==='hide';G.daily=b.dataset.hunt==='daily'?todayKey():'';if(G.daily||G.hs)G.teams=false;if(G.daily){G.mode='game';G.total=DAILY_N;G.diff='normal';}commit();});
 $('#teamSeg').addEventListener('click',e=>{const b=e.target.closest('button');if(!b||!amHost()||G.phase!=='lobby')return;G.teams=b.dataset.teams==='1';if(G.teams)G.mode='game';commit();});
+$('#hotBtn').addEventListener('click',e=>{e.stopPropagation();if(!amHost()||G.phase!=='clue')return;G.hot=!G.hot;sfx.pop();commit();});
+/* ---------- Red vs Blue: the host picks the teams in the lobby ---------- */
+function renderTeams(host){
+  const box=$('#teamPick');box.hidden=!G.teams;if(!G.teams)return;
+  for(const [id,side] of [['#teamR','r'],['#teamB','b']]){
+    const el=$(id);el.textContent='';
+    for(const p of sortedPlayers().filter(p=>G.tm[p.peer]===side)){
+      const b=document.createElement('button');b.type='button';b.className='tchip';b.disabled=!host;
+      const dot=document.createElement('i');dot.style.background=safeCol(p.presence.col);
+      b.append(dot,document.createTextNode((clean(p.presence.name)||'Bean')+(p.sameTab?' (you)':'')));
+      if(host){b.title='Move to the other team';b.onclick=()=>{G.tm[p.peer]=side==='r'?'b':'r';sfx.pop();commit();};}
+      el.appendChild(b);
+    }
+    if(!el.children.length){const s=document.createElement('small');s.textContent='Nobody yet';el.appendChild(s);}
+  }
+  $('#teamTip').textContent=host?'Tap a name to move them to the other team.':'The host picks the teams.';
+  $('#teamShuffle').hidden=!host;
+}
+$('#teamShuffle').addEventListener('click',()=>{
+  if(!amHost()||G.phase!=='lobby'||!G.teams)return;
+  const ps=sortedPlayers().map(p=>p.peer);for(let i=ps.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[ps[i],ps[j]]=[ps[j],ps[i]];}
+  G.tm={};ps.forEach((p,i)=>{G.tm[p]=i%2?'b':'r';});sfx.pop();commit();
+});
 $('#roomCode').addEventListener('click',()=>$('#inviteBtn').click());
 $('#startBtn').addEventListener('click',()=>{audioInit();if(amHost()&&G.phase==='lobby'){startGame();tryLock();}});
 // fold the clue card away for a clearer view, and back again
