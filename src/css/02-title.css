@@ -63,3 +63,5 @@
 .err{color:var(--coral)}
 
 @media (max-width:560px){ .setup{grid-template-columns:1fr} .prevCol{position:static} .beanPrev{height:170px;width:122px} }
+/* short screens: let the preview scroll with the page instead of sliding over the buttons */
+@media (max-height:600px){ .prevCol{position:static} }
