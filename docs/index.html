@@ -92,6 +92,10 @@ input[type=text],textarea{font:inherit;font-weight:800;border:3px solid var(--in
 .card.tier-nice{--tier:var(--sea)}
 .card.tier-fancy{--tier:var(--grape)}
 .card.tier-legend{--tier:linear-gradient(90deg,#FFD23F,#FF9F1C,#FF5D73,#FFD23F);box-shadow:0 0 0 2px #FFD23F}
+.card.tier-earn{--tier:linear-gradient(90deg,#3DDC97,#4D96FF,#9B5DE5);box-shadow:0 0 0 2px #3DDC97}
+.card.locked .art{filter:saturate(.5) brightness(.92)}
+.card .goalbar{width:100%;height:8px;border-radius:5px;background:rgba(43,32,64,.12);overflow:hidden;margin-top:2px}
+.card .goalbar i{display:block;height:100%;background:linear-gradient(90deg,#3DDC97,#4D96FF);border-radius:5px}
 .card.trying{outline:3px solid var(--coral);outline-offset:2px}
 .card .art{font-size:34px;line-height:1;width:56px;height:56px;margin-top:6px;border:0;background:none;padding:0;display:flex;align-items:center;justify-content:center;border-radius:12px}
 .card .art.pic{width:74px;height:98px;margin-top:4px;background:radial-gradient(circle at 50% 60%,#FFF6DD,#FFE1B8);border:2px solid rgba(43,32,64,.15)}
@@ -133,6 +137,7 @@ input[type=text],textarea{font:inherit;font-weight:800;border:3px solid var(--in
 @media (prefers-reduced-motion:reduce){.btn.pulse{animation:none}}
 #sensIn{width:auto;flex:1;max-width:220px;accent-color:#7A5CFA}
 #sensVal{font-family:var(--display);font-weight:400;min-width:3em}
+.btn.daily{background:var(--grape);color:#fff}
 /* ---------- HUD ---------- */
 #hud{position:fixed;inset:0;pointer-events:none;z-index:10}
 #hud > *{pointer-events:auto}
@@ -391,6 +396,36 @@ kbd{font-family:var(--body);font-weight:900;background:var(--paper);color:var(--
 @media (max-height:520px) and (orientation:landscape){
   .touch #lobby{left:calc(166px + env(safe-area-inset-left,0px));width:min(380px,calc(100% - 320px));max-height:calc(100% - 60px)}
 }
+
+/* the room code doubles as the invite button */
+button.code{cursor:pointer;line-height:1.25;font-weight:400}
+button.code:hover{filter:brightness(1.06)}
+
+/* round card: who found it and how fast */
+#roundCard{position:absolute;left:50%;top:70%;transform:translate(-50%,-50%);z-index:30;min-width:min(340px,86vw);max-width:min(460px,92vw);background:var(--paper);color:var(--text);border:4px solid var(--ink);border-radius:22px;box-shadow:0 8px 0 var(--ink);padding:14px 20px 16px;text-align:center;cursor:pointer;overflow:hidden}
+#roundCard.good{background:linear-gradient(180deg,rgba(255,210,63,.45),rgba(255,210,63,0) 65%),var(--paper)}
+#roundCard.mine{box-shadow:0 8px 0 var(--ink),0 0 0 6px #FFD23F}
+#roundCard.pop{animation:rcPop .45s cubic-bezier(.2,1.6,.4,1)}
+@keyframes rcPop{from{transform:translate(-50%,-50%) scale(.6);opacity:0}to{transform:translate(-50%,-50%) scale(1);opacity:1}}
+#roundCard .rcTop{font-family:var(--display);font-size:clamp(20px,3vw,28px);color:var(--text)}
+#roundCard .rcBig{font-weight:900;font-size:clamp(16px,2.2vw,21px);margin-top:4px;color:var(--text)}
+#roundCard .rcSub{font-weight:800;font-size:14px;color:var(--muted);margin-top:4px}
+#roundCard .rcChips{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-top:8px}
+#roundCard .rcChips:empty{display:none}
+#roundCard .rcChips span{background:var(--paper);border:2px solid var(--ink);border-radius:999px;padding:2px 9px;font-weight:900;font-size:12.5px}
+#roundCard .rcConf{position:absolute;inset:0;pointer-events:none}
+#roundCard .rcConf i{position:absolute;top:-12px;width:8px;height:12px;border-radius:2px;animation:rcFall 1.5s ease-in forwards}
+@keyframes rcFall{to{transform:translate(var(--dx),230px) rotate(var(--r));opacity:0}}
+.touch #roundCard{top:66%;min-width:0;max-width:min(340px,58vw);padding:5px 12px 7px;border-width:3px;border-radius:16px;box-shadow:0 4px 0 var(--ink)}
+.touch #roundCard .rcChips{gap:4px;margin-top:4px}
+.touch #roundCard .rcChips span{font-size:10.5px;padding:1px 6px}
+.touch #roundCard .rcTop{font-size:16px}
+.touch #roundCard .rcBig{font-size:13px;margin-top:1px}
+.touch #roundCard .rcSub{font-size:11px;margin-top:1px}
+.board li:has(>small){grid-template-columns:1.8em 1fr auto 3.2em}
+.board li small{color:var(--muted);font-size:12px}
+.board li.me small{color:#2B2040}
+.board li:has(>small) b{text-align:right}
 </style>
 </head>
 <body>
@@ -440,6 +475,7 @@ kbd{font-family:var(--body);font-weight:900;background:var(--paper);color:var(--
     <p class="note invite" id="inviteNote" hidden></p>
     <div class="joinrow">
       <button class="btn" id="createBtn">Start a room</button>
+      <button class="btn daily" id="dailyBtn">📅 Daily challenge</button>
       <span class="or">or</span>
       <input id="codeIn" type="text" maxlength="4" placeholder="CODE" aria-label="Room code" autocomplete="off">
       <button class="btn sea" id="joinBtn">Join</button>
@@ -458,7 +494,7 @@ kbd{font-family:var(--body);font-weight:900;background:var(--paper);color:var(--
   <!-- one card: the room, score, clue number and time along the top, the clue underneath -->
   <div id="clue" class="panel noclue">
     <div id="stats">
-      <span class="code" id="roomCode" title="Room code">----</span>
+      <button class="code" id="roomCode" type="button" title="Invite friends to this room" aria-label="Room code. Tap to invite friends">----</button>
       <span class="stat"><small id="scoreLbl">Score</small><b id="score">0</b></span>
       <span class="stat"><small>Clue</small><b id="clueNum">–</b></span>
       <span class="stat"><small>⏱</small><b id="timeLeft">–</b></span>
@@ -478,6 +514,7 @@ kbd{font-family:var(--body);font-weight:900;background:var(--paper);color:var(--
   <div id="tools"><button id="coinBtn" aria-label="Your coins. Open the shop">🪙 <b class="coinsN">0</b><span id="coinPop" aria-hidden="true"></span></button><button id="wardrobeBtn" aria-label="Change outfit">👕 Outfit</button><button id="mute" aria-label="Toggle sound">Sound on</button></div>
   <div id="cross"></div>
   <div id="toast" role="status" aria-live="polite"></div>
+  <div id="roundCard" hidden role="status" aria-live="polite"><div class="rcConf" aria-hidden="true"></div><div class="rcTop" id="rcTop"></div><div class="rcBig" id="rcBig"></div><div class="rcSub" id="rcSub"></div><div class="rcChips" id="rcChips"></div></div>
   <div id="tip" class="panel" hidden></div>
 
   <div id="lobby" class="panel" hidden>
@@ -533,7 +570,7 @@ kbd{font-family:var(--body);font-weight:900;background:var(--paper);color:var(--
 
   <canvas id="miniMap" width="232" height="168" aria-label="Map: click to open" role="button"></canvas>
   <div id="mapView" hidden><div class="mapBox panel"><canvas id="mapBig" width="824" height="592" aria-label="Map of the island"></canvas>
-    <button id="mapClose" class="exitBtn" type="button">✕ Close map</button><p class="mapKey">You’re the arrow. A glowing name is where the clue says to look.</p></div></div>
+    <button id="mapClose" class="exitBtn" type="button">✕ Close map</button><p class="mapKey">You’re the arrow. A glowing name is where the clue says to look. Gold dots are golden acorns and shells to collect.</p></div></div>
   <button id="mapBtn" type="button" aria-label="Map">🗺️</button>
   <button id="chatBtn" type="button" aria-label="Chat">💬</button>
   <div id="chatLast" role="button" aria-label="Open the chat"></div>
@@ -552,6 +589,7 @@ kbd{font-family:var(--body);font-weight:900;background:var(--paper);color:var(--
       <kbd>Q</kbd><span>Ping a spot for your team</span>
       <kbd>Space</kbd><span>Jump</span>
       <kbd>B</kbd><span>Hop on your ride</span>
+      <kbd>T</kbd><span>Ride trick (or tap B twice)</span>
       <kbd>Tab</kbd><span>Map</span>
       <kbd>1–5</kbd><span>Wave, point, dance, shrug, cheer</span>
       <kbd>Enter</kbd><span>Chat</span>
@@ -908,8 +946,8 @@ function pigeonMesh(c){
   g.add(at(sph(0.03,'#1D1533',5,4,{ol:false,shadow:false}),-0.07,0.48,0.3));
   return g;
 }
-function catMesh(){
-  const g=new THREE.Group(); const c='#F29A38';
+function catMesh(col){
+  const g=new THREE.Group(); const c=col||'#F29A38';
   g.add(scl(at(sph(0.32,c,10,8),0,0.34,0),0.9,0.8,1.5));
   g.add(at(sph(0.25,c,10,8),0,0.62,0.45));
   for(const s of[-1,1]){g.add(rot(at(cone(0.09,0.18,c,4),0.13*s,0.85,0.45),0,0,-0.2*s));g.add(at(sph(0.04,'#1D1533',6,5,{ol:false,shadow:false}),0.09*s,0.66,0.67));}
@@ -2480,6 +2518,214 @@ function buildMovers(){
    W.movers.push(t=>{const p=path(t*2.4);g.position.set(p.x,landH(p.x,p.z)+0.06,p.z);g.rotation.y=angLerp(g.rotation.y,Math.atan2(p.dx,p.dz),0.2);kid.userData.arms[0].rotation.x=-0.9;kid.userData.arms[1].rotation.x=-0.9;});}
 }
 /* =========================================================
+   Critters that notice you: seagulls on the pier that take
+   off when you come close, free-range chickens that scatter,
+   a cat who runs off, rabbits in the meadow, butterflies in
+   the park, and a puppy who follows you around for a while.
+   They're just for fun, so none of them are clue answers.
+   ========================================================= */
+// is (x,z) open ground, at least c away from anything solid?
+function spotClear(x,z,c){
+  if(!walkable(x,z)||onDock(x,z)||Math.hypot(x-POND.x,z-POND.z)<POND.r+1)return false;
+  for(const o of W.obstacles){
+    if(o.t===0){if(Math.hypot(x-o.x,z-o.z)<o.r+c)return false;}
+    else if(x>o.x0-c&&x<o.x1+c&&z>o.z0-c&&z<o.z1+c)return false;
+  }
+  return true;
+}
+function lineClear(x0,z0,x1,z1,c){const n=Math.max(1,Math.ceil(Math.hypot(x1-x0,z1-z0)/0.7));for(let i=1;i<=n;i++)if(!spotClear(lerp(x0,x1,i/n),lerp(z0,z1,i/n),c))return false;return true;}
+// the nearest bean (you or a friend) to (x,z)
+function nearestBean(x,z){
+  let best=null,d=Infinity;
+  if(P.bean&&myCode){d=Math.hypot(P.pos.x-x,P.pos.z-z);best=P.pos;}
+  for(const r of Remote.values()){const p=r.bean.position,e=Math.hypot(p.x-x,p.z-z);if(e<d){d=e;best=p;}}
+  return {p:best,d};
+}
+// sounds from critters get quieter with distance, and stop past 18 m
+const nearYou=(x,z)=>P.bean&&myCode?clamp(1-Math.hypot(P.pos.x-x,P.pos.z-z)/18,0,1):0;
+
+/* ---------- a ground critter that wanders round home and runs from beans ----------
+   o: {home:[x,z], r (roam radius), walk, run (speeds), scare (how close is too close),
+       c (clearance), idle:[min,max] pause, anim(t,state), noise()} */
+function roamer(g,o){
+  const s={x:o.home[0],z:o.home[1],tx:o.home[0],tz:o.home[1],wait:Math.random()*3,flee:0,face:Math.random()*TAU,moving:false};
+  // start somewhere open near home
+  for(let i=0;i<30;i++){const a=Math.random()*TAU,d=Math.random()*o.r,x=o.home[0]+Math.cos(a)*d,z=o.home[1]+Math.sin(a)*d;if(spotClear(x,z,o.c)){s.x=s.tx=x;s.z=s.tz=z;break;}}
+  scene.add(g);
+  const pickTarget=(ax,az,dist,spread)=>{
+    const base=Math.atan2(az,ax);
+    for(const off of[0,0.5,-0.5,1,-1,1.6,-1.6,2.3,-2.3,Math.PI]){
+      const a=base+off*(spread||1),x=s.x+Math.cos(a)*dist,z=s.z+Math.sin(a)*dist;
+      if(Math.hypot(x-o.home[0],z-o.home[1])>o.r*1.6)continue;
+      if(lineClear(s.x,s.z,x,z,o.c))return [x,z];
+    }
+    return null;
+  };
+  W.movers.push((t,dt)=>{
+    const nb=nearestBean(s.x,s.z);
+    if(nb.p&&nb.d<o.scare&&s.flee<=0){
+      const tg=pickTarget(s.x-nb.p.x,s.z-nb.p.z,o.run*0.9,1);
+      if(tg){s.tx=tg[0];s.tz=tg[1];s.flee=1.1;s.wait=0.4+Math.random();if(o.noise&&Math.random()<0.7){const v=nearYou(s.x,s.z);if(v>0.05)o.noise(v);}}
+    }
+    s.flee-=dt;
+    const dx=s.tx-s.x,dz=s.tz-s.z,d=Math.hypot(dx,dz);
+    s.moving=d>0.15;
+    if(s.moving){const sp=Math.min(d,(s.flee>0?o.run:o.walk)*dt);s.x+=dx/d*sp;s.z+=dz/d*sp;s.face=angLerp(s.face,Math.atan2(dx,dz),damp(s.flee>0?14:6,dt));}
+    else{s.wait-=dt;if(s.wait<=0){s.wait=o.idle[0]+Math.random()*(o.idle[1]-o.idle[0]);
+      const a=Math.random()*TAU,back=Math.hypot(s.x-o.home[0],s.z-o.home[1])>o.r;
+      const tg=back?pickTarget(o.home[0]-s.x,o.home[1]-s.z,Math.min(4,Math.hypot(o.home[0]-s.x,o.home[1]-s.z)),0.6):pickTarget(Math.cos(a),Math.sin(a),1+Math.random()*3,1);
+      if(tg){s.tx=tg[0];s.tz=tg[1];}}}
+    g.position.set(s.x,landH(s.x,s.z),s.z);g.rotation.y=s.face;
+    o.anim(t,s,dt);
+  });
+  return s;
+}
+
+/* ---------- meshes ---------- */
+function chickenMesh(c){
+  const g=new THREE.Group(),b=new THREE.Group();g.add(b);
+  b.add(scl(at(sph(0.22,c,8,6,{w:0.02}),0,0.3,0),0.9,0.9,1.2));
+  const head=new THREE.Group();head.position.set(0,0.52,0.16);b.add(head);
+  head.add(sph(0.13,c,8,6,{w:0.018}));head.add(rot(at(cone(0.035,0.09,'#F2A541',4,{ol:false}),0,0,0.15),Math.PI/2,0,0));
+  head.add(at(scl(sph(0.05,'#E8323F',4,3,{ol:false}),0.6,1,1.4),0,0.13,0));head.add(at(scl(sph(0.03,'#E8323F',4,3,{ol:false}),0.6,1,1),0,-0.09,0.1));
+  for(const s of[-1,1])head.add(at(sph(0.022,'#1D1533',4,3,{ol:false}),0.08*s,0.03,0.08));
+  b.add(rot(at(cone(0.1,0.18,c,5,{ol:false}),0,0.42,-0.26),-0.9,0,0));
+  const wings=[];for(const s of[-1,1]){const w=new THREE.Group();w.position.set(0.18*s,0.36,0);const m=scl(sph(0.13,c,6,5,{ol:false}),0.35,0.8,1.2);m.position.set(0.02*s,-0.04,0);w.add(m);b.add(w);wings.push(w);}
+  for(const s of[-1,1])g.add(at(cyl(0.02,0.02,0.16,'#F2A541',4,{ol:false}),0.07*s,0.08,0));
+  g.userData={b,head,wings};return g;
+}
+function rabbitMesh(){
+  const g=new THREE.Group(),b=new THREE.Group();g.add(b);const c='#D8C4AE';
+  b.add(scl(at(sph(0.25,c,10,8,{w:0.02}),0,0.24,0),0.9,0.85,1.2));
+  b.add(at(sph(0.16,c,8,6,{w:0.02}),0,0.42,0.22));
+  for(const s of[-1,1]){b.add(rot(at(cap(0.045,0.22,c,{w:0.012}),0.07*s,0.66,0.18),-0.2,0,0.15*s));b.add(at(sph(0.025,'#1D1533',4,3,{ol:false}),0.1*s,0.46,0.34));}
+  b.add(at(sph(0.025,'#FF8FA8',4,3,{ol:false}),0,0.41,0.38));b.add(at(sph(0.08,'#FFFFFF',6,5,{ol:false}),0,0.28,-0.3));
+  g.userData={b};return g;
+}
+function puppyMesh(){
+  const g=new THREE.Group(),b=new THREE.Group();g.add(b);const c='#E8B878',d='#8B5E3C';
+  b.add(scl(at(sph(0.28,c,10,8,{w:0.02}),0,0.42,0),0.85,0.8,1.35));
+  const head=new THREE.Group();head.position.set(0,0.72,0.34);b.add(head);
+  head.add(sph(0.22,c,10,8,{w:0.02}));head.add(at(scl(sph(0.11,'#FFF3DC',8,6,{ol:false}),1,0.8,1),0,-0.06,0.17));head.add(at(sph(0.045,'#1D1533',6,5,{ol:false}),0,-0.02,0.27));
+  for(const s of[-1,1]){head.add(at(sph(0.03,'#1D1533',4,3,{ol:false}),0.09*s,0.06,0.18));head.add(rot(at(scl(sph(0.1,d,6,5,{ol:false}),0.5,1.3,0.9),0.19*s,-0.02,-0.02),0,0,0.35*s));}
+  const tongue=at(scl(sph(0.04,'#FF8FA8',4,3,{ol:false}),1,0.5,1.4),0,-0.12,0.24);head.add(tongue);
+  const tail=new THREE.Group();tail.position.set(0,0.56,-0.34);b.add(tail);tail.add(rot(at(cap(0.04,0.18,c,{w:0.012}),0,0.12,0),-0.4,0,0));
+  const legs=[];for(const [x,z] of[[-0.13,0.2],[0.13,0.2],[-0.13,-0.2],[0.13,-0.2]]){const p=new THREE.Group();p.position.set(x,0.3,z);p.add(at(cyl(0.06,0.06,0.3,c,6,{ol:false}),0,-0.15,0));g.add(p);legs.push(p);}
+  g.userData={b,head,tail,legs,tongue};return g;
+}
+function gullMesh(){
+  const g=new THREE.Group();
+  g.add(scl(at(sph(0.22,'#FFFFFF',8,6,{w:0.02}),0,0.32,0),0.8,0.8,1.5));g.add(at(sph(0.14,'#FFFFFF',8,6,{w:0.015}),0,0.48,0.26));
+  g.add(rot(at(cone(0.04,0.14,'#FF9F1C',5,{ol:false}),0,0.46,0.42),Math.PI/2,0,0));
+  for(const s of[-1,1])g.add(at(sph(0.02,'#1D1533',4,3,{ol:false}),0.07*s,0.51,0.34));
+  g.add(rot(at(cone(0.1,0.2,'#C8D4E0',4,{ol:false}),0,0.32,-0.36),-Math.PI/2,0,0));
+  const wings=[];for(const s of[-1,1]){const w=new THREE.Group();w.position.set(0.14*s,0.38,0);const m=box(0.62,0.03,0.24,'#E8EEF6',{ol:false});m.position.x=0.31*s;w.add(m);
+    const tip=box(0.2,0.031,0.18,'#2B2040',{ol:false});tip.position.x=0.56*s;w.add(tip);g.add(w);wings.push([w,s]);}
+  for(const s of[-1,1])g.add(at(cyl(0.015,0.015,0.14,'#FF9F1C',4,{ol:false}),0.06*s,0.07,0));
+  g.userData={wings};return g;
+}
+
+function buildCritters(){
+  /* chickens: free range round the farmyard; they scatter, flapping, when you come close */
+  const CHK=[['#FFFFFF'],['#C8793C'],['#E8C45A'],['#FFFFFF'],['#2B2040']];
+  CHK.forEach(([c],i)=>{
+    const g=chickenMesh(c),u=g.userData;
+    roamer(g,{home:[70+i*2.2,5.5+(i%2)*2],r:6,walk:0.8,run:5,scare:3.2,c:0.5,idle:[0.6,2.5],noise:v=>sfx.cluck(v),
+      anim(t,s){const peck=!s.moving&&Math.sin(t*2+i*1.7)>0.3;u.head.position.z=0.16+(peck?0.08:0);u.head.position.y=0.52-(peck?0.18+Math.max(0,Math.sin(t*14))*0.05:0);
+        const run=s.flee>0&&s.moving;u.b.position.y=s.moving?Math.abs(Math.sin(t*(run?22:10)))*(run?0.12:0.04):0;
+        u.wings.forEach((w,k)=>{w.rotation.z=(k?-1:1)*(run?0.4+Math.sin(t*40)*0.6:0);});}});
+  });
+
+  /* the town cat: naps and wanders round the square and Market Street, and darts off if you rush it */
+  {const g=catMesh('#8C8C9E'),tail=g.userData.tail;
+   roamer(g,{home:[20,-6],r:16,walk:1.1,run:7.5,scare:3.8,c:0.6,idle:[2,6],noise:v=>sfx.meow(v),
+     anim(t,s){tail.rotation.x=-0.7+(s.flee>0?-0.6:Math.sin(t*1.5)*0.15);tail.rotation.z=Math.sin(t*2.2)*0.25;g.position.y+=s.moving?Math.abs(Math.sin(t*(s.flee>0?18:8)))*0.05:0;}});}
+
+  /* rabbits in the meadows out east: a hop at a time */
+  for(const [x,z] of[[106,-22],[112,6],[96,34]]){
+    const g=rabbitMesh(),u=g.userData;
+    roamer(g,{home:[x,z],r:7,walk:1.4,run:6.5,scare:5,c:0.5,idle:[1,4],
+      anim(t,s){const f=s.flee>0?12:7;u.b.position.y=s.moving?Math.abs(Math.sin(t*f))*(s.flee>0?0.45:0.2):0;u.b.rotation.x=s.moving?-Math.cos(t*f)*0.2:0;}});
+  }
+
+  /* seagulls: perched along the pier; they take off, circle the harbor and land again */
+  {const perches=[[1.2,52],[-1.2,56.5],[1.2,61],[-1.2,65.5],[4.5,71.5],[-4.8,71.5],[1.2,68]];
+   const taken=new Set();
+   for(let i=0;i<4;i++){
+     const g=gullMesh(),u=g.userData;scene.add(g);
+     let pi=i*2%perches.length;taken.add(pi);
+     const s={mode:'sit',t:0,x:perches[pi][0],z:perches[pi][1],y:0,a:Math.random()*TAU,face:Math.random()*TAU,sx:0,sz:0,sy:0};
+     s.y=groundY(s.x,s.z);
+     W.movers.push((t,dt)=>{
+       if(s.mode==='sit'){
+         const nb=nearestBean(s.x,s.z);
+         if(nb.p&&nb.d<5.5){s.mode='fly';s.t=5+Math.random()*5;s.a=Math.atan2(s.z-58,s.x-2);taken.delete(pi);const v=nearYou(s.x,s.z);if(v>0.05)sfx.gull(v);}
+         g.position.set(s.x,s.y,s.z);g.rotation.set(0,s.face+Math.sin(t*0.4+i)*0.3,0);
+         u.wings.forEach(([w,k])=>{w.rotation.z=k*-0.1;w.rotation.y=k*1.2;});
+       }else if(s.mode==='fly'){
+         s.t-=dt;s.a+=dt*0.5;const r=10+i*1.5,tx=2+Math.cos(s.a)*r,tz=58+Math.sin(s.a)*r,ty=8+i*0.8+Math.sin(t*0.8+i);
+         const k=damp(1.6,dt);s.x=lerp(s.x,tx,k);s.z=lerp(s.z,tz,k);s.y=lerp(s.y,ty,k);
+         g.position.set(s.x,s.y,s.z);g.rotation.set(0,-s.a,0.35);
+         const f=Math.sin(t*9+i)*0.7;u.wings.forEach(([w,k2])=>{w.rotation.y=0;w.rotation.z=k2*f;});
+         if(s.t<=0){let n=Math.floor(Math.random()*perches.length);for(let j=0;j<perches.length&&taken.has(n);j++)n=(n+1)%perches.length;
+           pi=n;taken.add(n);s.mode='land';s.sx=perches[n][0];s.sz=perches[n][1];s.sy=groundY(s.sx,s.sz);}
+       }else{
+         const dx=s.sx-s.x,dz=s.sz-s.z,dy=s.sy-s.y,d=Math.hypot(dx,dz,dy),sp=Math.min(d,7*dt);
+         if(d<0.05){s.mode='sit';s.x=s.sx;s.z=s.sz;s.y=s.sy;s.face=Math.random()*TAU;}
+         else{s.x+=dx/d*sp;s.z+=dz/d*sp;s.y+=dy/d*sp;g.rotation.set(0,Math.atan2(dx,dz),0);}
+         g.position.set(s.x,s.y,s.z);const f=Math.sin(t*12)*0.6;u.wings.forEach(([w,k2])=>{w.rotation.y=0;w.rotation.z=k2*f;});
+       }
+     });
+   }}
+
+  /* butterflies in the park and by the flower beds: they flutter off if you get too close */
+  {const cols=['#FF8FBF','#FFD23F','#9B5DE5','#4D96FF','#FF9F1C','#3DDC97'];
+   const homes=[[-30,14],[-33,-4],[-46,2],[-24,6],[38,6],[16,-8]];
+   homes.forEach(([hx,hz],i)=>{
+     const g=new THREE.Group(),wm=new THREE.MeshBasicMaterial({color:cols[i%cols.length],side:THREE.DoubleSide});
+     const wings=[];for(const s of[-1,1]){const piv=new THREE.Group();const w=new THREE.Mesh(new THREE.CircleGeometry(0.16,8),wm);w.scale.set(1,1.3,1);w.position.x=0.15*s;w.rotation.x=-Math.PI/2;piv.add(w);
+       const w2=new THREE.Mesh(new THREE.CircleGeometry(0.1,8),wm);w2.position.set(0.1*s,0,-0.14);w2.rotation.x=-Math.PI/2;piv.add(w2);g.add(piv);wings.push([piv,s]);}
+     g.add(scl(at(new THREE.Mesh(new THREE.SphereGeometry(0.03,5,4),M('#2B2040')),0,0,0),1,1,4));scene.add(g);
+     const s={x:hx,z:hz,scat:0,ox:0,oz:0};
+     W.movers.push((t,dt)=>{
+       const nb=nearestBean(s.x,s.z);if(nb.p&&nb.d<2.5&&s.scat<=0){s.scat=3;const a=Math.atan2(s.z-nb.p.z,s.x-nb.p.x);s.ox=Math.cos(a)*3;s.oz=Math.sin(a)*3;}
+       s.scat-=dt;const k=clamp(s.scat/3,0,1);
+       const a=t*0.7+i*1.3,x=hx+Math.cos(a)*2.2+Math.sin(t*1.9+i)*0.7+s.ox*k,z=hz+Math.sin(a*1.2)*2.2+s.oz*k;s.x=x;s.z=z;
+       g.position.set(x,landH(x,z)+1+Math.sin(t*2.3+i)*0.4+k*2.5,z);g.rotation.y=-a;
+       const f=Math.sin(t*(k>0?30:18)+i)*1.1;wings.forEach(([p,sg])=>{p.rotation.z=sg*f;});
+     });
+   });}
+
+  /* the puppy: waits in the park; walk up to it and it tags along behind you for a while */
+  {const g=puppyMesh(),u=g.userData;scene.add(g);
+   const HOME=[-32,0];
+   const s={x:HOME[0],z:HOME[1],face:0,follow:false,bored:0,barkT:3,sp:0,told:false};
+   const pos={x:s.x,z:s.z};
+   W.movers.push((t,dt)=>{
+     let tx=HOME[0],tz=HOME[1],want=1.2;
+     if(P.bean&&myCode){
+       const d=Math.hypot(P.pos.x-s.x,P.pos.z-s.z);
+       if(!s.follow&&d<3.5){s.follow=true;s.bored=90+Math.random()*60;if(!s.told){s.told=true;sys('🐶 A puppy is following you! It’ll head home when it gets tired.');}sfx.bark(1);}
+       if(s.follow){s.bored-=dt;if(s.bored<=0||d>45){s.follow=false;sys('🐶 The puppy trotted back to the park.');}}
+       if(s.follow){const bx=P.pos.x-Math.sin(P.face)*2.2,bz=P.pos.z-Math.cos(P.face)*2.2;tx=bx;tz=bz;want=Math.min(16,Math.max(3,Math.hypot(P.vel.x,P.vel.z)+1.5));}
+     }else s.follow=false;
+     const dx=tx-s.x,dz=tz-s.z,d=Math.hypot(dx,dz),moving=d>(s.follow?0.8:0.3);
+     s.sp=lerp(s.sp,moving?Math.min(want*(d>6?1.3:1),d*3):0,damp(6,dt));
+     if(s.sp>0.05&&d>0.01){const nx=s.x+dx/d*s.sp*dt,nz=s.z+dz/d*s.sp*dt;
+       pos.x=nx;pos.z=nz;collide(pos);
+       if(walkable(pos.x,pos.z)){s.x=pos.x;s.z=pos.z;}
+       s.face=angLerp(s.face,Math.atan2(dx,dz),damp(10,dt));}
+     else if(s.follow&&P.bean)s.face=angLerp(s.face,Math.atan2(P.pos.x-s.x,P.pos.z-s.z),damp(4,dt));
+     g.position.set(s.x,groundY(s.x,s.z),s.z);g.rotation.y=s.face;
+     const run=s.sp>0.3,f=Math.min(18,6+s.sp*1.6);
+     u.legs.forEach((l,i)=>{l.rotation.x=run?Math.sin(t*f+(i===0||i===3?0:Math.PI))*0.7:0;});
+     u.b.position.y=run?Math.abs(Math.sin(t*f))*0.06:0;
+     u.tail.rotation.z=Math.sin(t*(s.follow?20:6))*0.6;
+     u.head.rotation.x=run?0:Math.sin(t*1.2)*0.1;u.tongue.visible=run||s.follow;
+     s.barkT-=dt;if(s.barkT<=0){s.barkT=6+Math.random()*10;if(s.follow||Math.random()<0.3){const v=nearYou(s.x,s.z);if(v>0.05)sfx.bark(v);}}
+   });}
+}
+/* =========================================================
    Ring road, vehicles, sky traffic
    ========================================================= */
 function buildRoads(){
@@ -2542,17 +2788,22 @@ const BEAN_COLORS=['#FF5D73','#FF9F1C','#FFD23F','#3DDC97','#2EC4B6','#4D96FF','
 // Everything not in the starter set is sold in the shop (see PRICES).
 const CLOTH_COLORS=['#FFFFFF','#2B2040','#FF5D73','#FF9F1C','#FFD23F','#3DDC97','#4D96FF','#9B5DE5'];
 const TOPS=[['none','Nothing',''],['tee','Tee','👕'],['hoodie','Hoodie','🧥'],['sweater','Sweater','🧶'],['raincoat','Raincoat','☔'],['puffer','Puffer jacket','🧣'],
-  ['hawaii','Flower shirt','🌺'],['varsity','Varsity jacket','🏈'],['tux','Tuxedo','🤵'],['cape','Hero cape','🦸'],['space','Space suit','🧑‍🚀'],['armor','Knight armor','🛡️'],['dino','Dino suit','🦖']];
+  ['hawaii','Flower shirt','🌺'],['varsity','Varsity jacket','🏈'],['tux','Tuxedo','🤵'],['cape','Hero cape','🦸'],['space','Space suit','🧑‍🚀'],['armor','Knight armor','🛡️'],['dino','Dino suit','🦖'],['detective','Detective coat','🕵️'],['ninja','Ninja suit','🥷']];
 const BOTTOMS=[['none','Nothing',''],['shorts','Shorts','🩳'],['pants','Pants','👖'],['skirt','Skirt','👗'],['overalls','Overalls','🧑‍🌾'],['tutu','Tutu','🩰'],['hula','Grass skirt','🌴']];
 const SHOES=[['plain','Bare feet',''],['sneakers','Sneakers','👟'],['boots','Boots','🥾'],['flippers','Flippers','🤿'],['cowboy','Cowboy boots','🤠'],['bunny','Bunny slippers','🐰'],
-  ['rollers','Roller skates','🛼'],['glow','Light-up sneakers','✨'],['rocket','Rocket boots','🚀']];
+  ['rollers','Roller skates','🛼'],['glow','Light-up sneakers','✨'],['rocket','Rocket boots','🚀'],['gold','Golden sneakers','🌟']];
 const PATTERNS=[['solid','Plain'],['stripes','Stripes'],['dots','Dots'],['checks','Checks'],['stars','Stars'],['rainbow','Rainbow']];
 const EXTRAS=[['none','None',''],['scarf','Scarf','🧣'],['bowtie','Bow tie','🎀'],['glasses','Glasses','👓'],['shades','Cool shades','😎'],['backpack','Backpack','🎒'],['floatie','Duck floatie','🦆'],
-  ['balloon','Balloon','🎈'],['guitar','Guitar','🎸'],['wings','Fairy wings','🧚'],['jetpack','Jetpack','🔥'],['medal','Gold medal','🏅'],['buddy','Ghost buddy','👻']];
+  ['balloon','Balloon','🎈'],['guitar','Guitar','🎸'],['wings','Fairy wings','🧚'],['jetpack','Jetpack','🔥'],['medal','Gold medal','🏅'],['buddy','Ghost buddy','👻'],
+  ['crown','Crown','👑'],['party','Party hat','🥳'],['cap','Backwards cap','🧢'],['tail','Squirrel tail','🐿️']];
 // things to ride (the Ride button): speed, and how high it carries you
-const RIDES=[['board','Hoverboard','🛹'],['bike','Bike','🚲'],['carpet','Magic carpet','🧞'],['cloud','Cloud','☁️'],['rocket','Rocket','🚀'],['ufo','Flying saucer','🛸']];
+const RIDES=[['board','Hoverboard','🛹'],['bike','Bike','🚲'],['carpet','Magic carpet','🧞'],['cloud','Cloud','☁️'],['rocket','Rocket','🚀'],['ufo','Flying saucer','🛸'],['dragon','Dragon','🐉']];
 // base: where the ride sits under the bean's feet
-const RIDE_INFO={board:{speed:13.5,lift:0.34,base:-0.1},bike:{speed:12,lift:0.7,base:-0.12},carpet:{speed:14,lift:0.62,base:-0.03},cloud:{speed:12.5,lift:0.72,base:-0.08},rocket:{speed:17,lift:0.78,base:-0.2},ufo:{speed:15,lift:0.72,base:-0.08}};
+const RIDE_INFO={board:{speed:13.5,lift:0.34,base:-0.1},bike:{speed:12,lift:0.7,base:-0.12},carpet:{speed:14,lift:0.62,base:-0.03},cloud:{speed:12.5,lift:0.72,base:-0.08},rocket:{speed:17,lift:0.78,base:-0.2},ufo:{speed:15,lift:0.72,base:-0.08},dragon:{speed:16,lift:0.95,base:-0.3}};
+// ride tricks (double-tap Ride, or T): a hop plus a flip, roll or spin, turning about a point py up (and pz along)
+const TRICKS={board:{dur:0.85,hop:1.5,ry:TAU,brz:TAU},bike:{dur:1.3,hop:0.3,wheelie:0.6,pz:-0.75},carpet:{dur:1.0,hop:1.2,rz:TAU,py:1.2,fancy:1},
+  cloud:{dur:1.1,hop:1.7,rx:-TAU,py:1.2,fancy:1},rocket:{dur:1.4,hop:3.4,rx:-TAU,py:1.4,fancy:1},ufo:{dur:1.2,hop:1.2,ry:2*TAU,fancy:1},dragon:{dur:1.4,hop:2.8,rx:-TAU,py:1.3,fancy:1}};
+const TK_V=new V3(),TK_W=new V3();
 const rideOf=fit=>RIDE_INFO[fit&&fit.r]?fit.r:'board';
 const rideLift=fit=>RIDE_INFO[rideOf(fit)].lift;
 const DEFAULT_FIT={t:'tee',tc:6,tp:'solid',b:'shorts',bc:1,bp:'solid',s:'plain',sc:1,x:'none',r:'board'};
@@ -2699,6 +2950,24 @@ function dressBean(body,arms,feet,fit,col){
     for(const a of arms){const p=mk(new THREE.SphereGeometry(0.22,12,8,0,TAU,0,Math.PI/2),null,{mat:steel,w:0.02});p.position.y=-0.04;a.add(p);
       const s=mk(new THREE.CapsuleGeometry(0.176,0.2,5,12),null,{mat:dark,w:0.02});s.position.y=-0.22;a.add(s);}
     body.add(ring(0.4,bodyR(0.4)+0.05,0.045,'#8B5E3C'));body.add(neck(dark,0.05));
+  }else if(fit.t==='detective'){
+    // a long belted trench coat with a turned-up collar, whatever the top color; a magnifying glass in hand
+    const coat=M('#C9A46A'),dk=M('#9C7A45');
+    body.add(shell(0.14,0.86,coat,0.07,dk));sleeves(arms,coat,true,dk);
+    body.add(ring(0.5,bodyR(0.5)+0.06,0.04,darker(tc,0.7)));body.add(at(box(0.1,0.08,0.04,'#FFD23F',{w:0.01}),0,0.5,bodyR(0.5)+0.1));
+    for(const s of[-1,1]){const c=box(0.22,0.22,0.03,'#C9A46A',{w:0.012});c.position.set(0.13*s,0.86,bodyR(0.86)+0.04);c.rotation.set(-0.5,0,s*0.55);body.add(c);
+      for(let i=0;i<2;i++)body.add(at(sph(0.025,'#5B3A29',5,4,{ol:false}),0.1*s,0.72-i*0.14,bodyR(0.72-i*0.14)+0.045));}
+    const glass=new THREE.Group();glass.add(mk(new THREE.TorusGeometry(0.11,0.025,6,18),'#5B3A29',{ol:false}));
+    const lens=new THREE.Mesh(new THREE.CircleGeometry(0.1,18),new THREE.MeshBasicMaterial({color:'#CFF4FF',transparent:true,opacity:0.55,side:THREE.DoubleSide}));glass.add(lens);
+    glass.add(at(cyl(0.025,0.025,0.22,'#5B3A29',6,{ol:false}),0,-0.2,0));glass.position.set(0,-0.62,0.08);glass.rotation.y=Math.PI/2;arms[1].add(glass);
+  }else if(fit.t==='ninja'){
+    // a dark suit, a belt in your top color and a headband whose tails flutter as you run
+    const suit=M('#2B2040'),bc_=tc==='#2B2040'?'#FF5D73':tc,band=M(bc_);
+    body.add(shell(0.16,0.88,suit,0,false));sleeves(arms,suit,true,band);
+    body.add(ring(0.46,bodyR(0.46)+0.05,0.05,band));
+    body.add(ring(1.3,0.43,0.045,band));
+    const tails=[];for(const s of[-1,1]){const t=box(0.07,0.34,0.02,bc_,{ol:false});t.geometry.translate(0,-0.17,0);t.position.set(0.05*s,1.3,-0.44);t.rotation.set(0.9,0,0.25*s);body.add(t);tails.push(t);}
+    out.fx.push((t,st)=>{tails.forEach((b,i)=>{b.rotation.x=0.9+(st.an||st.hb?0.5:0)+Math.sin(t*(st.an?14:3)+i)*0.18;});});
   }else if(fit.t!=='none'){
     const mat=clothMat(tc,fit.t==='hawaii'?'hawaii':fit.tp);
     const y0=fit.t==='raincoat'?0.3:fit.t==='tux'?0.36:fit.t==='tee'||fit.t==='hawaii'?0.46:0.4;
@@ -2769,6 +3038,10 @@ function dressBean(body,arms,feet,fit,col){
     else if(fit.s==='rocket'){sole(f,'#8C97AE');onFoot(f,cyl(0.17,0.19,0.26,'#C9D2E3',10,{w:0.022}),0,0.17,-0.04,1,1,1);onFoot(f,cyl(0.19,0.19,0.05,sc,10,{ol:false}),0,0.28,-0.04,1,1,1);
       const fl=new THREE.Mesh(new THREE.ConeGeometry(0.1,0.35,8),new THREE.MeshBasicMaterial({color:'#FF9F1C'}));onFoot(f,fl,0,-0.2,-0.12,1,1,1).rotation.x=Math.PI;
       out.fx.push((t,st)=>{const on=st.an===3||st.hb;fl.visible=on||Math.sin(t*3)>0.6;const k=0.7+0.3*Math.sin(t*40+f.position.x*9);fl.scale.set(k/f.scale.x,(on?1.4:0.6)*k/f.scale.y,k/f.scale.z);});}
+    else if(fit.s==='gold'){sole(f,'#FFFFFF');onFoot(f,sph(0.1,'#FFFFFF',10,6,{w:0.015}),0,0,0.2,1.05,0.75,1);
+      for(let i=0;i<3;i++)onFoot(f,box(0.13,0.025,0.03,'#FFFFFF',{ol:false}),0,0.085,0.08-i*0.07,1,1,1);
+      const sp=new THREE.Mesh(new THREE.OctahedronGeometry(0.07),new THREE.MeshBasicMaterial({color:'#FFFBE0'}));onFoot(f,sp,0.14,0.2,0.1,1,1,1);
+      out.fx.push(t=>{const k=Math.max(0.001,Math.sin(t*3+f.position.x*7));sp.scale.set(k/f.scale.x,k/f.scale.y,k/f.scale.z);sp.rotation.y=t*4;});}
     else if(fit.s==='flippers')onFoot(f,sph(0.2,sc,10,6,{w:0.018}),0,-0.04,0.28,1.25,0.22,2);
     else if(fit.s==='rollers'){
       onFoot(f,box(0.3,0.05,0.5,'#FFFFFF',{w:0.015}),0,-0.07,0.02,1,1,1);
@@ -2826,6 +3099,28 @@ function dressBean(body,arms,feet,fit,col){
     const tails=[];for(let i=0;i<3;i++){const c=cone(0.05,0.12,'#F4F6FB',6,{ol:false});c.rotation.x=Math.PI;c.position.set(-0.07+i*0.07,-0.2,0);pal.add(c);tails.push(c);}
     body.add(pal);
     out.fx.push(t=>{const a=t*1.1;pal.position.set(Math.cos(a)*0.85,1.35+Math.sin(t*2.4)*0.12,Math.sin(a)*0.5);pal.rotation.y=-a+Math.PI/2;tails.forEach((c,i)=>{c.rotation.z=Math.sin(t*6+i)*0.3;});});
+  }else if(fit.x==='crown'){
+    const c=new THREE.Group();c.add(mk(new THREE.CylinderGeometry(0.3,0.27,0.18,16,1,true),null,{mat:new THREE.MeshToonMaterial({color:'#FFD23F',gradientMap:gradTex,side:THREE.DoubleSide}),w:0.015}));
+    for(let i=0;i<6;i++){const a=i/6*TAU;c.add(at(cone(0.06,0.16,'#FFD23F',4,{w:0.012}),Math.sin(a)*0.29,0.16,Math.cos(a)*0.29));c.add(at(sph(0.03,'#FFFFFF',5,4,{ol:false}),Math.sin(a)*0.29,0.25,Math.cos(a)*0.29));}
+    for(const [a,cc] of[[0,'#FF3B5C'],[Math.PI/3,'#4D96FF'],[-Math.PI/3,'#3DDC97']])c.add(at(sph(0.045,cc,6,5,{ol:false}),Math.sin(a)*0.31,0.01,Math.cos(a)*0.31));
+    c.position.set(0.03,1.5,0);c.rotation.z=-0.12;body.add(c);
+  }else if(fit.x==='party'){
+    const h=new THREE.Group(),m=mk(new THREE.ConeGeometry(0.2,0.5,14),null,{mat:clothMat('#9B5DE5','stars'),w:0.015});m.position.y=0.25;h.add(m);
+    h.add(at(sph(0.08,'#FFD23F',8,6,{w:0.012}),0,0.52,0));h.add(rot(at(new THREE.Mesh(new THREE.TorusGeometry(0.19,0.03,6,16),M('#FF5D73')),0,0.02,0),Math.PI/2,0,0));
+    h.position.set(-0.12,1.44,0);h.rotation.z=0.3;body.add(h);
+    out.fx.push(t=>{h.rotation.z=0.3+Math.sin(t*2.4)*0.05;});
+  }else if(fit.x==='cap'){
+    const cp=new THREE.Group();cp.add(mk(new THREE.SphereGeometry(0.46,18,8,0,TAU,0,Math.PI/2),'#FF5D73',{w:0.015}));cp.add(at(scl(sph(0.2,'#FFFFFF',10,6,{ol:false}),1,0.75,0.3),0,0.2,0.39));
+    const brim=mk(new THREE.CylinderGeometry(0.27,0.27,0.03,16,1,false,Math.PI/2,Math.PI),'#C8324F',{w:0.012});brim.scale.set(1,1,1.35);brim.position.set(0,0.01,-0.38);cp.add(brim);
+    cp.add(at(sph(0.05,'#FFFFFF',6,5,{ol:false}),0,0.45,0));
+    cp.position.set(0,1.16,0);cp.rotation.x=-0.1;body.add(cp);
+  }else if(fit.x==='tail'){
+    // a big fluffy tail curling up behind you, swishing as you go
+    const tail=new THREE.Group();tail.position.set(0,0.3,-bodyR(0.3)-0.02);body.add(tail);
+    const segs=[];let parent=tail;
+    for(let i=0;i<6;i++){const g=new THREE.Group();g.position.y=i?0.2:0;const r=0.13+i*0.035;
+      g.add(at(sph(r,i>3?'#E8A45C':'#C8793C',10,8,{w:0.02}),0,0.1,0));parent.add(g);segs.push(g);parent=g;}
+    out.fx.push((t,st)=>{const sp=st.an?9:2.2;segs.forEach((g,i)=>{g.rotation.x=-0.45+(i>2?0.35:0)+Math.sin(t*sp-i*0.6)*0.08;g.rotation.z=Math.sin(t*sp*0.7-i*0.5)*0.12;});});
   }else if(fit.x==='wings'){
     const wm=new THREE.MeshToonMaterial({color:'#BDEBFF',gradientMap:gradTex,transparent:true,opacity:0.85,side:THREE.DoubleSide});
     for(const s of[-1,1]){
@@ -2876,6 +3171,28 @@ function rideMesh(kind){
     const lights=[];for(let i=0;i<8;i++){const a=i/8*TAU;const l=new THREE.Mesh(new THREE.SphereGeometry(0.06,6,5),new THREE.MeshBasicMaterial({color:'#FFD23F'}));l.position.set(Math.cos(a)*0.62,-0.18,Math.sin(a)*0.62);g.add(l);lights.push(l);}
     const beam=new THREE.Mesh(new THREE.CylinderGeometry(0.2,0.55,0.8,16,1,true),new THREE.MeshBasicMaterial({color:'#B6FFF5',transparent:true,opacity:0.25,depthWrite:false,side:THREE.DoubleSide}));beam.position.y=-0.6;g.add(beam);
     fx.push(t=>{lights.forEach((l,i)=>{l.material.color.setHSL(((t*0.5+i/8)%1),1,0.6);});d.rotation.y=t*1.5;});
+  }else if(kind==='dragon'){
+    // a friendly green dragon: you sit on its back between flapping wings
+    const d=new THREE.Group();d.position.y=-0.25;g.add(d);
+    const sk='#3DBE6C',bel='#FFE38A';
+    const bodyM=sph(0.55,sk,14,10,{w:0.03});bodyM.scale.set(0.9,0.75,1.5);d.add(bodyM);
+    const belly=sph(0.5,bel,12,8,{ol:false});belly.scale.set(0.75,0.6,1.3);belly.position.y=-0.1;d.add(belly);
+    const neckG=new THREE.Group();neckG.position.set(0,0.2,0.7);d.add(neckG);
+    neckG.add(rot(at(cyl(0.18,0.26,0.7,sk,10,{w:0.025}),0,0.25,0.12),0.5,0,0));
+    const head=new THREE.Group();head.position.set(0,0.62,0.35);neckG.add(head);
+    head.add(scl(sph(0.3,sk,12,10,{w:0.025}),1,0.85,1.2));head.add(at(scl(sph(0.2,sk,10,8,{w:0.02}),1,0.7,1.1),0,-0.06,0.3));
+    for(const s of[-1,1]){head.add(at(sph(0.08,'#FFFFFF',8,6,{w:0.012}),0.16*s,0.1,0.2));head.add(at(sph(0.045,'#1D1533',6,5,{ol:false}),0.18*s,0.11,0.26));
+      head.add(rot(at(cone(0.06,0.22,'#FFE38A',6,{w:0.012}),0.12*s,0.3,-0.12),-0.5,0,-0.3*s));head.add(at(sph(0.025,'#1D1533',4,3,{ol:false}),0.07*s,-0.02,0.5));}
+    for(let i=0;i<5;i++)d.add(rot(at(cone(0.08,0.2,'#FFD23F',4,{w:0.012}),0,0.42-i*0.02,0.45-i*0.32),-0.2,0,0));
+    const tail=new THREE.Group();tail.position.set(0,0,-0.8);d.add(tail);
+    tail.add(rot(at(cone(0.24,1.1,sk,10,{w:0.025}),0,0.05,-0.5),-Math.PI/2-0.15,0,0));tail.add(rot(at(cone(0.14,0.22,'#FFD23F',4,{w:0.012}),0,0.2,-1.05),-Math.PI/2,0,0));
+    const wm=new THREE.MeshToonMaterial({color:'#7FE0A0',gradientMap:gradTex,side:THREE.DoubleSide});
+    const wings=[];for(const s of[-1,1]){const piv=new THREE.Group();piv.position.set(0.35*s,0.3,0.1);d.add(piv);
+      const shp=new THREE.Shape();shp.moveTo(0,0.25);shp.lineTo(1.25,0.35);shp.lineTo(1.0,-0.05);shp.lineTo(0.75,0.1);shp.lineTo(0.5,-0.2);shp.lineTo(0.25,0);shp.lineTo(0,-0.25);
+      const w=new THREE.Mesh(new THREE.ShapeGeometry(shp),wm);w.rotation.x=-Math.PI/2;w.scale.x=s;w.castShadow=true;piv.add(w);
+      const bone=cyl(0.035,0.035,1.25,sk,5,{ol:false});bone.rotation.z=Math.PI/2;bone.position.set(0.62*s,0.01,-0.3);piv.add(bone);wings.push([piv,s]);}
+    for(const [x,z] of[[-0.3,0.45],[0.3,0.45],[-0.3,-0.45],[0.3,-0.45]])d.add(at(scl(sph(0.13,sk,8,6,{w:0.02}),1,1.2,1),x,-0.42,z));
+    fx.push((t,moving)=>{const sp=moving?7:3;wings.forEach(([p,s])=>{p.rotation.z=s*(0.15+Math.sin(t*sp)*(moving?0.55:0.3));});tail.rotation.y=Math.sin(t*2.5)*0.35;neckG.rotation.x=Math.sin(t*sp)*0.05;head.rotation.y=Math.sin(t*0.9)*0.25;d.position.y=-0.25+Math.sin(t*sp)*0.06;});
   }else{
     const deck=mk(new THREE.CylinderGeometry(0.5,0.5,0.1,20),'#FF5D73',{w:0.03});deck.scale.set(0.95,1,1.9);g.add(deck);
     const stripe=mk(new THREE.CylinderGeometry(0.5,0.5,0.02,20),'#FFFFFF',{ol:false});stripe.scale.set(0.3,1,1.8);stripe.position.y=0.055;g.add(stripe);
@@ -2897,7 +3214,8 @@ function nameTag(text,col){
 let beanSeq=0;
 function makeBean(col,fitIn,name,into){
   const fit=safeFit(fitIn);
-  const g=new THREE.Group();const body=new THREE.Group();g.add(body);
+  // the rig holds everything but the name tag, so a ride trick can flip it all together
+  const g=new THREE.Group(),rig=new THREE.Group();g.add(rig);const body=new THREE.Group();rig.add(body);
   // an egg-shaped body with a white face, chunky arms and stubby feet
   const prof=[];for(let i=0;i<=22;i++){const y=BODY_TOP*i/22;prof.push(new THREE.Vector2(Math.max(bodyR(y),i===0||i===22?0:0.02),y));}
   const skin=mk(new THREE.LatheGeometry(prof,28),col,{w:0.035});body.add(skin);
@@ -2907,18 +3225,18 @@ function makeBean(col,fitIn,name,into){
     const a=mk(new THREE.CapsuleGeometry(0.15,0.3,5,10),col,{w:0.04});a.position.y=-0.27;p.add(a);p.rotation.z=0.3*s;body.add(p);arms.push(p);}
   body.position.y=LEG_LIFT;
   // legs swing from the hip, so a step lifts the foot and plants it again
-  const bare=fit.s==='plain',footCol=bare?col:CLOTH_COLORS[fit.sc];
+  const bare=fit.s==='plain',footCol=bare?col:fit.s==='gold'?'#FFC52E':CLOTH_COLORS[fit.sc];
   const hips=[],feet=[];
-  for(const s of[-1,1]){const hip=new THREE.Group();hip.position.set(0.22*s,0.42,0.06);g.add(hip);hips.push(hip);
+  for(const s of[-1,1]){const hip=new THREE.Group();hip.position.set(0.22*s,0.42,0.06);rig.add(hip);hips.push(hip);
     const f=mk(new THREE.SphereGeometry(0.21,12,8),footCol,{w:0.03});f.scale.set(1.05,0.66,1.35);f.position.set(0,-0.3,0.02);hip.add(f);feet.push(f);
     onFoot(f,cyl(0.13,0.14,0.3,col,10,{w:0.022}),0,0.2,-0.03,1,1,1);}   // stubby leg
   // (the old spyglass antenna is gone; these stay so older code that turns it has something to turn)
   const ant=new THREE.Group(),scope=new THREE.Group();
   const dressed=dressBean(body,arms,feet,fit,col);
   // the ride, tucked away until you hop on
-  const ride=rideMesh(rideOf(fit));ride.visible=false;ride.position.y=-0.2;g.add(ride);
+  const ride=rideMesh(rideOf(fit));ride.visible=false;ride.position.y=-0.2;rig.add(ride);
   const tag=nameTag(name||'',col);tag.position.y=2.55;g.add(tag);
-  g.userData={body,arms,feet,hips,ant,scope,face,board:ride,rideKind:rideOf(fit),tag,id:beanSeq++,col,fit,name,wings:dressed.wings,fx:dressed.fx,phase:0,lastT:0};
+  g.userData={rig,body,arms,feet,hips,ant,scope,face,board:ride,rideKind:rideOf(fit),tag,id:beanSeq++,col,fit,name,wings:dressed.wings,fx:dressed.fx,phase:0,lastT:0};
   (into||scene).add(g);return g;
 }
 function animBean(b,st,t){
@@ -2963,6 +3281,16 @@ function animBean(b,st,t){
   u.arms[0].rotation.set(a0x,0,a0z);u.arms[1].rotation.set(a1x,0,a1z);
   for(const w of u.wings)w.rotation.y=w.userData.s*(0.35+0.3*Math.sin(t*(st.an?9:4)+u.id));
   for(const f of u.fx)f(t,st);
+  // ride tricks
+  const rig=u.rig,tr=riding&&st.tk?TRICKS[u.rideKind]:null,ta=tr?(Date.now()-st.tk)/1000:9;
+  if(tr&&ta>=0&&ta<tr.dur){
+    if(u.lastTk!==st.tk){u.lastTk=st.tk;if(b.parent===scene){const p=b.position;burst(new V3(p.x,p.y+1.2,p.z),tr.fancy?60:30);}}
+    const f=ta/tr.dur,e=f*f*(3-2*f),h=tr.hop*Math.sin(Math.PI*f);
+    rig.rotation.set(tr.wheelie?-tr.wheelie*Math.min(1,Math.sin(Math.PI*f)*2.5):(tr.rx||0)*e,(tr.ry||0)*e,(tr.rz||0)*e);
+    TK_V.set(0,tr.py||0,tr.pz||0);TK_W.copy(TK_V).applyEuler(rig.rotation);rig.position.set(TK_V.x-TK_W.x,TK_V.y-TK_W.y+h,TK_V.z-TK_W.z);
+    if(tr.brz)u.board.rotation.z+=tr.brz*e;
+    setFace(u,'laugh');if(u.rideKind!=='bike'){u.arms[0].rotation.set(0,0,-2.5);u.arms[1].rotation.set(0,0,2.5);}
+  }else if(rig.position.y||rig.position.z||rig.rotation.x||rig.rotation.y||rig.rotation.z){rig.position.set(0,0,0);rig.rotation.set(0,0,0);}
 }
 /* =========================================================
    Local player
@@ -3018,7 +3346,21 @@ function collide(p){
 // hop on or off the hoverboard (the 🛹 button on phones, B on a keyboard)
 function setBoard(on){
   if(on===P.board)return;P.board=on;sfx.jump();buzz(20);sendPresence(true);
+  // the first few rides: tell people tricks exist
+  if(on){let n=0;try{n=+localStorage.getItem('wb.tkTip')||0;}catch(e){}
+    if(n<3){try{localStorage.setItem('wb.tkTip',String(n+1));}catch(e){}setTimeout(()=>{if(P.board)toast(touchMode?'Double-tap Ride for a trick!':'Press T for a trick!',2200);},700);}}
   for(const b of document.querySelectorAll('[data-act=board]'))b.setAttribute('aria-pressed',on);
+}
+// Ride button: one tap hops on or off; a quick double-tap while riding does a trick instead
+let rideTapT=null;
+function rideTap(){
+  if(!P.board){setBoard(true);return;}
+  if(rideTapT){clearTimeout(rideTapT);rideTapT=null;doTrick();return;}
+  rideTapT=setTimeout(()=>{rideTapT=null;setBoard(false);},300);
+}
+function doTrick(){
+  const tr=TRICKS[rideOf(myFit)];if(!P.board||!tr||Date.now()-(P.tk||0)<tr.dur*1000+150)return;
+  P.tk=Date.now();sfx.zoom();sfx.pop();buzz(25);sendPresence(true);bumpStat('tricks');
 }
 const camTmp=new V3(),lookTmp=new V3();
 function updateCamera(dt){
@@ -3089,7 +3431,8 @@ window.addEventListener('keydown',e=>{
   if(e.code==='Enter'){e.preventDefault();if(locked)document.exitPointerLock();$('#chatInput').focus();}
   else if(e.code==='KeyQ') doPing();
   else if(e.code==='KeyM') toggleMute();
-  else if(e.code==='KeyB') setBoard(!P.board);
+  else if(e.code==='KeyB') rideTap();
+  else if(e.code==='KeyT') doTrick();
   else if(e.code==='Tab'){e.preventDefault();setMap(!MAP.open);}
   else if(e.code==='Escape'&&MAP.open) setMap(false);
   else if(e.code==='KeyH') $('#side').hidden=!$('#side').hidden;
@@ -3142,6 +3485,10 @@ const sfx={
   fanfare(){[523,659,784,1047,784,1047,1319].forEach((f,i)=>tone(f,0.34,'triangle',0.15,i*0.12));},
   spy(){tone(392,0.2,'triangle',0.15);tone(587,0.35,'triangle',0.15,0.16);},
   clue(){tone(523,0.18,'sine',0.14);tone(784,0.3,'sine',0.13,0.12);},
+  cluck(v){v=v||1;tone(560,0.07,'square',0.03*v,0,380);tone(600,0.07,'square',0.03*v,0.1,420);tone(700,0.1,'square',0.025*v,0.2,480);},
+  meow(v){v=v||1;tone(560,0.16,'triangle',0.12*v,0,900);tone(900,0.3,'triangle',0.1*v,0.15,480);},
+  bark(v){v=v||1;tone(460,0.09,'square',0.05*v,0,250);tone(440,0.1,'square',0.045*v,0.17,230);},
+  coin(){tone(988,0.08,'square',0.045);tone(1319,0.3,'square',0.045,0.08);},
   gull(v){tone(1600,0.32,'sawtooth',0.02*v,0,850);tone(1450,0.28,'sawtooth',0.018*v,0.3,760);},
 };
 const CHORDS=[[53,57,60,64],[52,55,59,62],[50,53,57,60],[48,52,55,59]];
@@ -3330,7 +3677,7 @@ function presence(patch){Object.assign(Net.myPres,patch);if(Net.room)Net.room.pr
 let lastPres=0;
 function sendPresence(force){
   if(!myCode)return;const t=performance.now();if(!force&&t-lastPres<80)return;lastPres=t;
-  presence({x:Math.round(P.pos.x*100)/100,y:Math.round(P.pos.y*100)/100,z:Math.round(P.pos.z*100)/100,ry:Math.round(P.face*100)/100,an:P.an,em:P.em||'',emAt:P.emAt||0,hb:P.board?1:0});
+  presence({x:Math.round(P.pos.x*100)/100,y:Math.round(P.pos.y*100)/100,z:Math.round(P.pos.z*100)/100,ry:Math.round(P.face*100)/100,an:P.an,em:P.em||'',emAt:P.emAt||0,hb:P.board?1:0,tk:P.tk||0});
 }
 function emit(topic,data){
   data=Object.assign({code:myCode},data);
@@ -3539,10 +3886,10 @@ async function walletPull(){
   try{const snap=await walletRef().get();if(snap.exists)walletMerge(snap.data());}catch(e){}
   walletPush();
 }
-function walletPush(){if(Cloud.db&&Cloud.uid){try{walletWrite(walletRef(),{coins:Wallet.coins,owned:Wallet.owned.slice(),found:Wallet.found.slice(),at:Wallet.at});}catch(e){}}}
+function walletPush(){if(Cloud.db&&Cloud.uid){try{walletWrite(walletRef(),{coins:Wallet.coins,owned:Wallet.owned.slice(),found:Wallet.found.slice(),stats:Wallet.stats,at:Wallet.at});}catch(e){}}}
 
 /* ---------- today's daily-hunt board ---------- */
-const Daily={key:'',rows:[],unsub:null};
+const Daily={key:'',rows:[],unsub:null,web:new Map(),webKey:''};
 function dailyWatch(key){
   if(!Cloud.db||(Daily.unsub&&Daily.key===key))return;
   if(Daily.unsub)Daily.unsub();Daily.key=key;Daily.rows=[];
@@ -3552,18 +3899,18 @@ function dailyWatch(key){
 function dailyRow(id,d){
   d=d||{};
   return {id,names:(Array.isArray(d.names)?d.names:[]).slice(0,6).map(n=>clean(n,14)).filter(Boolean),
-    score:clamp(Math.round(+d.score||0),0,9999),found:clamp(Math.round(+d.found||0),0,DAILY_N)};
+    score:clamp(Math.round(+d.score||0),0,9999),found:clamp(Math.round(+d.found||0),0,DAILY_N),secs:clamp(Math.round(+d.secs||0),0,36000)};
 }
 // keeps each team leader's best score for the day
-async function dailySubmit(key,score,found,names){
-  if(!Cloud.db)return 'none';
+async function dailySubmit(key,score,found,names,secs){
+  if(!Cloud.db)return dailyWebSubmit(key,score,found,names,secs);
   let ref;
   try{ref=Cloud.db.doc('daily/'+key+'/teams/'+(Cloud.uid||'t'+Math.random().toString(36).slice(2,10)));}
   catch(e){ref=Cloud.db.doc('daily/'+key+'/teams/t'+Math.random().toString(36).slice(2,10));}
   try{
     const cur=await ref.get();
-    if(cur.exists&&(+cur.data().score||0)>=score)return 'kept';
-    await ref.set({names,score,found,at:Date.now()});return 'saved';
+    if(cur.exists&&dailyBetter(cur.data(),{score,secs})>=0)return 'kept';
+    await ref.set({names,score,found,secs,at:Date.now()});return 'saved';
   }catch(e){return 'failed';}
 }
 /* =========================================================
@@ -3580,15 +3927,41 @@ const PRICES={
   'x:scarf':40,'x:bowtie':60,'x:shades':70,'x:glasses':80,'x:backpack':100,'x:floatie':150,'x:balloon':180,'x:guitar':250,'x:wings':350,'x:jetpack':500,'x:medal':600,'x:buddy':800,
   'ride:carpet':250,'ride:cloud':400,'ride:rocket':600,'ride:ufo':900,
 };
+// earned, not bought: each one unlocks when you reach its goal
+const UNLOCKS={
+  'x:party':{goal:'friends',n:3,text:'Finish 3 games with friends'},
+  'top:detective':{goal:'quick',n:10,text:'Find 10 things in under 15 seconds each'},
+  'x:cap':{goal:'tricks',n:25,text:'Do 25 ride tricks'},
+  'x:tail':{goal:'gold',n:30,text:'Collect 30 golden acorns and shells'},
+  'x:crown':{goal:'finds',n:50,text:'Find 50 things'},
+  'shoe:gold':{goal:'days',n:3,text:'Play the daily challenge on 3 different days'},
+  'top:ninja':{goal:'hard',n:1,text:'Win a Hard game (find at least half the clues)'},
+  'ride:dragon':{goal:'finds',n:150,text:'Find 150 things'},
+};
+const isPaid=k=>!!(PRICES[k]||UNLOCKS[k]);
 const TEAM_SHARE=5;   // what everyone else gets when a teammate finds something
 const SLOT_LISTS={top:TOPS,bot:BOTTOMS,shoe:SHOES,pat:PATTERNS,x:EXTRAS,ride:RIDES};
-const Wallet={coins:0,owned:[],found:[],at:0};   // found: names in your Townpedia
+// found: names in your Townpedia; stats: progress towards the earned items
+const Wallet={coins:0,owned:[],found:[],at:0,stats:{finds:0,quick:0,tricks:0,gold:0,friends:0,hard:0,days:[]}};
+const cleanStats=d=>{d=d&&typeof d==='object'?d:{};const n=v=>clamp(Math.floor(+v||0),0,1e6);
+  return {finds:n(d.finds),quick:n(d.quick),tricks:n(d.tricks),gold:n(d.gold),friends:n(d.friends),hard:n(d.hard),days:(Array.isArray(d.days)?d.days:[]).filter(k=>typeof k==='string'&&/^\d{4}-\d\d-\d\d$/.test(k)).slice(-400)};};
 try{const s=JSON.parse(localStorage.getItem('wb.wallet')||'{}');
-  Wallet.coins=Math.max(0,Math.floor(+s.coins||0));Wallet.owned=Array.isArray(s.owned)?s.owned.filter(k=>PRICES[k]):[];
+  Wallet.coins=Math.max(0,Math.floor(+s.coins||0));Wallet.owned=Array.isArray(s.owned)?s.owned.filter(isPaid):[];Wallet.stats=cleanStats(s.stats);
   Wallet.found=Array.isArray(s.found)?s.found.filter(n=>typeof n==='string').slice(0,500):[];Wallet.at=+s.at||0;}catch(e){}
-const isOwned=k=>!PRICES[k]||Wallet.owned.includes(k);
-const tierOf=k=>{const p=PRICES[k]||0;return p>=300?'legend':p>=150?'fancy':p?'nice':'basic';};
-const TIER_NAMES={basic:'Starter',nice:'Nice',fancy:'Fancy',legend:'Legendary'};
+const isOwned=k=>!isPaid(k)||Wallet.owned.includes(k);
+const tierOf=k=>{if(UNLOCKS[k])return 'earn';const p=PRICES[k]||0;return p>=300?'legend':p>=150?'fancy':p?'nice':'basic';};
+const TIER_NAMES={basic:'Starter',nice:'Nice',fancy:'Fancy',legend:'Legendary',earn:'Earned'};
+/* ---------- progress, and the earned items it unlocks ---------- */
+function statOf(goal){const s=Wallet.stats;if(goal==='days')return s.days.length;if(goal==='finds')return Math.max(s.finds,lbMe().finds);return s[goal]||0;}
+function bumpStat(goal,n){if(goal==='days')return;Wallet.stats[goal]=(Wallet.stats[goal]||0)+(n||1);walletSave();checkUnlocks();}
+function checkUnlocks(){
+  for(const [k,u] of Object.entries(UNLOCKS)){
+    if(Wallet.owned.includes(k)||statOf(u.goal)<u.n)continue;
+    Wallet.owned.push(k);walletSave();
+    sfx.fanfare();toast(`🏆 Unlocked: ${itemName(k)}!`+String.fromCharCode(10)+'It’s in your wardrobe now',3200);
+    sys(`🏆 You unlocked ${itemInfo(k).emoji} ${itemName(k)} (${u.text.toLowerCase()}). Wear it from 👕 Outfit.`);
+  }
+}
 function itemInfo(k){const [slot,id]=k.split(':');const it=(SLOT_LISTS[slot]||[]).find(o=>o[0]===id)||[id,id,''];return {slot,id,name:it[1],emoji:it[2]||''};}
 function itemName(k){const i=itemInfo(k);return i.slot==='pat'?`${i.name} pattern`:i.name;}
 // 10 coins for a find, plus up to 25 more for speed (all of it within 5 s, none after a minute)
@@ -3622,16 +3995,29 @@ function buy(k){
 // the db copy may come from another device: keep everything owned anywhere, and the newer balance
 function walletMerge(d){
   if(!d||typeof d!=='object')return;
-  const theirs=(Array.isArray(d.owned)?d.owned:[]).filter(k=>PRICES[k]&&!Wallet.owned.includes(k));
+  const theirs=(Array.isArray(d.owned)?d.owned:[]).filter(k=>isPaid(k)&&!Wallet.owned.includes(k));
+  // progress: the most either copy has made
+  const st=cleanStats(d.stats),my=Wallet.stats;for(const k of ['finds','quick','tricks','gold','friends','hard'])my[k]=Math.max(my[k],st[k]);
+  for(const k of st.days)if(!my.days.includes(k))my.days.push(k);
   Wallet.owned.push(...theirs);
   for(const n of (Array.isArray(d.found)?d.found:[]))if(typeof n==='string'&&!Wallet.found.includes(n)&&Wallet.found.length<500)Wallet.found.push(n);
   if((+d.at||0)>Wallet.at){Wallet.coins=Math.max(0,Math.floor(+d.coins||0));Wallet.at=+d.at;}
-  walletStore();renderCoins();if(!$('#title').hidden)renderSetup();
+  walletStore();renderCoins();if(myCode)checkUnlocks();if(!$('#title').hidden)renderSetup();
 }
 function renderCoins(){for(const el of document.querySelectorAll('.coinsN'))el.textContent=Wallet.coins;}
 function coinPop(text){
   const el=$('#coinPop');if(!el)return;el.textContent=text;
   el.classList.remove('on');void el.offsetWidth;el.classList.add('on');
+}
+// a game you played to the end: progress for the earned items, and the daily challenge's bonus
+const DAILY_BONUS=30;
+function gameDone(){
+  const st=Wallet.stats;
+  if(players().length>=2)st.friends++;
+  if(!G.hs&&!G.daily&&G.diff==='hard'&&G.finds.length&&G.found>=G.finds.length/2)st.hard++;
+  if(G.daily&&!st.days.includes(G.daily)){st.days.push(G.daily);Wallet.coins+=DAILY_BONUS;seen.earned=(seen.earned||0)+DAILY_BONUS;coinPop('+'+DAILY_BONUS);
+    sys(`📅 Daily challenge done! Here’s 🪙 ${DAILY_BONUS}. Come back tomorrow for a new one.`);}
+  walletSave();checkUnlocks();renderDailyBoards();
 }
 /* ---------- Townpedia: everything you've found, and a bonus every 20 ---------- */
 const PEDIA_STEP=20,PEDIA_BONUS=40;
@@ -3649,9 +4035,9 @@ function pediaAdd(name){
 const PROUND_MS=120000,PICK_MS=45000,REVEAL_MS=5500,UNSOLVED_MS=8000,SESSION_PER=75000;
 // start: clue lines shown up front; lines: most lines a game clue grows to
 const DIFF={
-  easy:{label:'Easy',hint:15000,round:120000,mult:0.5,start:2,lines:4},
-  normal:{label:'Normal',hint:20000,round:95000,mult:1,start:1,lines:4},
-  hard:{label:'Hard',hint:28000,round:90000,mult:2,start:1,lines:3},
+  easy:{label:'Easy',hint:15000,round:120000,mult:0.5,start:2,lines:4,hot:0},
+  normal:{label:'Normal',hint:20000,round:95000,mult:1,start:1,lines:4,hot:30000},
+  hard:{label:'Hard',hint:28000,round:90000,mult:2,start:1,lines:3,hot:45000},
 };
 const diffOf=()=>DIFF[G.diff]||DIFF.normal;
 function freshState(){return {teams:false,tm:{},ts:{r:0,b:0},hs:false,hider:null,hiderName:'',pts:{},pnames:{},tp:null,phase:'lobby',mode:'alt',total:8,diff:'normal',daily:'',idx:0,score:0,found:0,streak:0,best:0,sessLeft:0,roundLeft:0,hintIn:0,lines:[],kind:'game',spy:null,spyName:'',mv:false,finds:[],reveal:null,dailyMsg:'',r:0,v:0,hostPeer:null};}
@@ -3687,7 +4073,7 @@ function adoptState(s,recv){
   if(!DIFF[G.diff])G.diff='normal';
   G.tp=Array.isArray(G.tp)&&G.tp.length===2&&G.tp.every(Number.isFinite)?G.tp:null;
   G.daily=typeof G.daily==='string'&&/^\d{4}-\d\d-\d\d$/.test(G.daily)?G.daily:'';
-  G.dailyMsg=clean(G.dailyMsg,80);
+  G.dailyMsg=clean(G.dailyMsg,80);G.dsecs=clamp(Math.round(+G.dsecs||0),0,36000);
   const peerMap=(o,ok)=>o&&typeof o==='object'&&!Array.isArray(o)?Object.fromEntries(Object.entries(o).slice(0,32).filter(([k,v])=>typeof k==='string'&&ok(v))):{};
   G.teams=!!G.teams;G.tm=peerMap(G.tm,v=>v==='r'||v==='b');G.ts={r:Math.max(0,+(G.ts&&G.ts.r)||0),b:Math.max(0,+(G.ts&&G.ts.b)||0)};
   G.hs=!!G.hs;G.hider=typeof G.hider==='string'?G.hider:null;G.hiderName=clean(G.hiderName);
@@ -3738,7 +4124,7 @@ function startGame(){
   if(G.hs){startHideSeek();return;}
   if(G.daily){G.mode='game';G.total=DAILY_N;G.diff='normal';G.teams=false;H.plan=dailyPlan(G.daily);}else H.plan=null;
   if(G.teams){G.mode='game';G.tm={};G.ts={r:0,b:0};assignTeams();}
-  G.score=0;G.found=0;G.streak=0;G.best=0;G.finds=[];G.dailyMsg='';G.idx=-1;
+  G.score=0;G.found=0;G.streak=0;G.best=0;G.finds=[];G.dailyMsg='';G.idx=-1;G.dsecs=0;H.gameStart=Date.now();
   H.sessEnd=Date.now()+G.total*SESSION_PER;
   nextClue();
 }
@@ -3766,8 +4152,8 @@ function startGameClue(){
     o=pick(pool);ladder=makeLadder(o,H.fmtLast,G.diff==='easy'?EASY_FMTS:G.diff==='hard'?HARD_FMTS:null);
   }
   H.used.add(o.id);H.target=o.id;H.obj=o;H.ladder=ladder;H.fmtLast=ladder.fmt;H.wrong=false;rememberAnswer(o.n);
-  // Easy shows a warmer/colder meter, so its players get the target's spot on the map
-  if(G.diff==='easy'&&!G.daily){const c=objCenter(o);G.tp=[Math.round(c.x*10)/10,Math.round(c.z*10)/10];}else G.tp=null;
+  // the warmer/colder meter: on from the start on Easy, and for anyone still stuck after a while otherwise
+  {const c=objCenter(o);G.tp=[Math.round(c.x*10)/10,Math.round(c.z*10)/10];}
   const lines=[ladder.l1];if(D.start>1)lines.push(ladder.l2);
   Object.assign(G,{kind:'game',spy:null,spyName:'',lines,mv:!!o.mv,phase:'clue',reveal:null});G.r++;
   H.clueStart=now;H.roundEnd=now+D.round;H.nextHintAt=now+D.hint;
@@ -3794,7 +4180,7 @@ function assignTeams(){
   for(const p of ps)if(!tm[p.peer]){const t=r<=b?'r':'b';tm[p.peer]=t;t==='r'?r++:b++;}
   G.tm=tm;
 }
-function endGame(){G.phase='recap';H.target=null;commit();if(G.daily)dailyAfterGame();}
+function endGame(){G.phase='recap';H.target=null;if(G.daily)G.dsecs=Math.round((Date.now()-(H.gameStart||Date.now()))/1000);commit();if(G.daily)dailyAfterGame();}
 
 function applyResultAsHost(d,now){
   if(G.phase!=='clue')return;
@@ -3809,8 +4195,8 @@ function applyResultAsHost(d,now){
     if(!H.wrong){const q=Math.round(10*D.mult);pts+=q;bonus.push(`✨ No wrong guesses +${q}`);}
     G.score+=pts;G.found++;
     const team=G.teams?G.tm[d.gp]:null;if(team)G.ts[team]=(G.ts[team]||0)+pts;
-    G.finds.push({c:(G.lines[0]||'').slice(0,110),n:o.n,by:clean(d.gn),p:pts});
     const ms=now-H.clueStart;
+    G.finds.push({c:(G.lines[0]||'').slice(0,110),n:o.n,by:clean(d.gn),p:pts,s:Math.round(ms/1000)});
     G.phase='reveal';G.reveal={found:true,id:d.id,name:o.n,by:clean(d.gn),pts,bonus,team:team||'',gp:String(d.gp||''),secs:Math.round(ms/1000),coins:coinsFor(ms,D.mult)};
     H.revealEnd=now+REVEAL_MS;commit();
   }else{H.sessEnd-=5000;H.wrong=true;commit();}
@@ -3897,28 +4283,60 @@ function dailyPlan(key){
 async function dailyAfterGame(){
   if(!amHost()||!G.daily)return;
   const names=sortedPlayers().map(p=>clean(p.presence.name)||'Bean').slice(0,6);
-  const res=await dailySubmit(G.daily,G.score,G.found,names);
+  const res=await dailySubmit(G.daily,G.score,G.found,names,G.dsecs||0);
   G.dailyMsg={saved:'Saved to today’s board!',kept:'Your team already has a better score today.',failed:'Couldn’t save this score.'}[res]||'';
   if(G.phase==='recap'&&G.dailyMsg)commit();
 }
+// >0 when a beats b: more points, or the same points in less time
+function dailyBetter(a,b){const d=(+a.score||0)-(+b.score||0);if(d)return d;const sa=+a.secs||0,sb=+b.secs||0;return sa&&sb?sb-sa:0;}
+/* ---------- the board on the web version: each team leader's best, kept on the public relay ---------- */
+const webDaily=()=>!Cloud.db&&!window.claude;
+function dailyWatchAny(key){
+  if(Cloud.db){dailyWatch(key);return;}
+  if(!webDaily()||Daily.webKey===key)return;
+  if(Daily.webKey&&Leaders.client)try{Leaders.client.unsubscribe(WEB_NS+'daily/'+Daily.webKey+'/+');}catch(e){}
+  Daily.webKey=key;Daily.web.clear();renderDailyBoards();
+  lbConnect().then(c=>{if(c&&Daily.webKey===key)c.subscribe(WEB_NS+'daily/'+key+'/+',{qos:0});});
+}
+function dailyWebRow(topic,d){
+  const [k,id]=topic.slice((WEB_NS+'daily/').length).split('/');
+  if(k!==Daily.webKey||!/^[a-z0-9]{12,24}$/.test(id||''))return;
+  Daily.web.set(id,dailyRow(id,d));renderDailyBoards();
+}
+async function dailyWebSubmit(key,score,found,names,secs){
+  if(!webDaily())return 'none';
+  let best={};try{best=JSON.parse(localStorage.getItem('wb.dbest')||'{}')||{};}catch(e){}
+  if(best.key===key&&dailyBetter(best,{score,secs})>=0)return 'kept';
+  const c=await lbConnect();if(!c||!c.connected)return 'failed';
+  const id=lbMe().id,row={names,score,found,secs,at:Date.now()};
+  try{c.publish(WEB_NS+'daily/'+key+'/'+id,JSON.stringify(row),{qos:0,retain:true});}catch(e){return 'failed';}
+  try{localStorage.setItem('wb.dbest',JSON.stringify({key,score,secs}));}catch(e){}
+  if(Daily.webKey===key){Daily.web.set(id,dailyRow(id,row));renderDailyBoards();}
+  return 'saved';
+}
+function dailyRows(){return (Cloud.db?Daily.rows.slice():[...Daily.web.values()]).sort((a,b)=>dailyBetter(b,a)).slice(0,10);}
 function renderBoard(el){
   el.textContent='';
   const note=t=>{const li=document.createElement('li');li.className='none';li.textContent=t;el.appendChild(li);};
-  if(!Cloud.db){note('Scores are saved when you play in the shared artifact.');return;}
-  if(!Daily.rows.length){note('No scores yet today. Be the first!');return;}
-  Daily.rows.forEach((r,i)=>{
-    const li=document.createElement('li');if(Cloud.uid&&r.id===Cloud.uid)li.className='me';
+  if(!Cloud.db&&!webDaily()){note('Scores are saved when you play in the shared artifact.');return;}
+  const rows=dailyRows();
+  if(!rows.length){note(Cloud.db||Leaders.client?'No scores yet today. Be the first!':'Loading today’s board…');return;}
+  const myId=Cloud.db?Cloud.uid:lbMe().id;
+  rows.forEach((r,i)=>{
+    const li=document.createElement('li');if(myId&&r.id===myId)li.className='me';
     const a=document.createElement('span');a.textContent=['🥇','🥈','🥉'][i]||String(i+1);
     const b=document.createElement('span');b.textContent=r.names.join(' & ')||'Someone';
+    const t=document.createElement('small');t.textContent=r.secs?'⏱ '+fmtT(r.secs*1000):'';
     const c=document.createElement('b');c.textContent=r.score;
-    li.append(a,b,c);el.appendChild(li);
+    li.append(a,b,t,c);el.appendChild(li);
   });
 }
 function renderDailyBoards(){
   for(const id of ['#dailyBoard','#recapBoard']){const el=$(id);if(el)renderBoard(el);}
   const note=$('#dailyNote');if(!note)return;
-  note.hidden=!Cloud.db;const top=Daily.rows[0];
-  note.textContent=top?`📅 Today’s daily hunt: top score ${top.score} by ${top.names.join(' & ')||'someone'}. Can you beat it?`:'📅 Today’s daily hunt is waiting. Start a room and pick Daily hunt.';
+  note.hidden=!Cloud.db&&!webDaily();const top=dailyRows()[0],done=Wallet.stats.days.includes(todayKey());
+  note.textContent=(done?'✅ You’ve done today’s challenge. ':`📅 Today’s challenge: the same ${DAILY_N} clues for everyone, and 🪙 ${DAILY_BONUS} for finishing. `)
+    +(top?`Top score: ${top.score} by ${top.names.join(' & ')||'someone'}${top.secs?' in '+fmtT(top.secs*1000):''}.`:'Nobody’s played it yet today.');
 }
 /* =========================================================
    Leaderboard: everyone's all-time points and finds.
@@ -3960,9 +4378,11 @@ async function lbConnect(){
     const url=WEB_RELAYS[Leaders.relay%WEB_RELAYS.length];
     const c=window.mqtt.connect(url,{clientId:'lb'+lbMe().id,clean:true,keepalive:30,reconnectPeriod:5000,connectTimeout:8000});
     let done=false;
-    c.on('connect',()=>{if(done)return;done=true;Leaders.client=c;Leaders.connecting=false;c.subscribe(WEB_NS+'lb/+',{qos:0});res(c);if(lbMe().finds)c.publish(WEB_NS+'lb/'+lbMe().id,JSON.stringify(lbPayload()),{qos:0,retain:true});});
-    c.on('message',(t,buf)=>{const id=t.split('/').pop();if(!/^[a-z0-9]{12,24}$/.test(id))return;
+    c.on('connect',()=>{if(done)return;done=true;Leaders.client=c;Leaders.connecting=false;c.subscribe(WEB_NS+'lb/+',{qos:0});if(Daily.webKey)c.subscribe(WEB_NS+'daily/'+Daily.webKey+'/+',{qos:0});res(c);if(lbMe().finds)c.publish(WEB_NS+'lb/'+lbMe().id,JSON.stringify(lbPayload()),{qos:0,retain:true});});
+    c.on('message',(t,buf)=>{
       let d;try{d=JSON.parse(new TextDecoder().decode(buf));}catch(e){return;}if(!d||typeof d!=='object')return;
+      if(t.startsWith(WEB_NS+'daily/')){dailyWebRow(t,d);return;}
+      const id=t.split('/').pop();if(!/^[a-z0-9]{12,24}$/.test(id))return;
       Leaders.web.set(id,lbRow(id,d));renderLeaders();});
     setTimeout(()=>{if(!done){done=true;try{c.end(true);}catch(e){}Leaders.connecting=false;Leaders.relay++;res(null);}},9000);
   });
@@ -3989,6 +4409,69 @@ function renderLeaders(){
     const d=document.createElement('b');d.textContent=r.pts;
     li.append(a,b,c,d);el.appendChild(li);
   });
+}
+/* =========================================================
+   Golden acorns and shells, scattered round the island for
+   you to pick up whenever you like (between clues, on the way
+   somewhere). Each is worth a couple of coins and counts
+   towards the Squirrel tail. Everyone has their own.
+   ========================================================= */
+const Pickups={items:[],on:false,N:10,PAY:2,EVERY:10,BONUS:15};
+const goldGlow=canvasTex(64,64,(x,W,H)=>{const g=x.createRadialGradient(W/2,H/2,2,W/2,H/2,W/2);g.addColorStop(0,'rgba(255,240,160,0.95)');g.addColorStop(0.35,'rgba(255,210,63,0.45)');g.addColorStop(1,'rgba(255,210,63,0)');x.fillStyle=g;x.fillRect(0,0,W,H);});
+const goldMat=new THREE.MeshToonMaterial({color:'#FFC933',gradientMap:gradTex,emissive:'#7A5200'});
+const goldDark=new THREE.MeshToonMaterial({color:'#D99A12',gradientMap:gradTex,emissive:'#5A3A00'});
+function goldMesh(kind){
+  const g=new THREE.Group(),spin=new THREE.Group();g.add(spin);
+  if(kind==='acorn'){
+    const nut=mk(new THREE.SphereGeometry(0.22,12,10),null,{mat:goldMat,w:0.025});nut.scale.set(1,1.25,1);nut.position.y=-0.04;spin.add(nut);
+    spin.add(rot(at(cone(0.06,0.12,'#FFC933',6,{ol:false}),0,-0.34,0),Math.PI,0,0));
+    const capM=mk(new THREE.SphereGeometry(0.25,12,8,0,TAU,0,Math.PI/2),null,{mat:goldDark,w:0.025});capM.scale.y=0.7;capM.position.y=0.1;spin.add(capM);
+    const stem=cyl(0.03,0.04,0.12,'#D99A12',6,{ol:false});stem.material=goldDark;stem.position.y=0.3;spin.add(stem);
+  }else{
+    // a scallop shell: ribs fanning out from a hinge
+    for(let i=0;i<7;i++){const a=(i/6-0.5)*1.9;const r=mk(new THREE.SphereGeometry(0.1,8,6),null,{mat:i%2?goldMat:goldDark,ol:false});r.scale.set(0.55,0.22,1.9);
+      r.position.set(Math.sin(a)*0.17,Math.cos(a)*0.17,0);r.rotation.z=-a;r.rotation.x=Math.PI/2;spin.add(r);}
+    const hinge=box(0.16,0.07,0.06,'#D99A12',{ol:false});hinge.material=goldDark;hinge.position.y=-0.02;spin.add(hinge);
+    spin.position.y=-0.08;
+  }
+  const glow=new THREE.Sprite(new THREE.SpriteMaterial({map:goldGlow,transparent:true,depthWrite:false,blending:THREE.AdditiveBlending}));glow.scale.set(1.6,1.6,1);g.add(glow);
+  g.traverse(m=>{m.raycast=()=>{};});
+  g.userData={spin};return g;
+}
+// somewhere open, not too near you or another one
+function goldSpot(){
+  for(let i=0;i<80;i++){
+    const x=sr(-62,125),z=sr(-62,62);
+    if(edgeDist(x,z)<7.5||!spotClear(x,z,0.8))continue;
+    if(P.bean&&Math.hypot(P.pos.x-x,P.pos.z-z)<14)continue;
+    if(Pickups.items.some(it=>Math.hypot(it.x-x,it.z-z)<16))continue;
+    return [x,z];
+  }
+  return null;
+}
+function goldSpawn(){
+  const p=goldSpot();if(!p)return;const [x,z]=p,kind=edgeDist(x,z)<16?'shell':'acorn';
+  const g=goldMesh(kind);g.position.set(x,landH(x,z)+0.55,z);scene.add(g);
+  Pickups.items.push({g,x,z,kind,ph:Math.random()*TAU});
+}
+function goldTick(t,dt){
+  if(!Pickups.on){Pickups.on=true;for(let i=0;i<Pickups.N;i++)goldSpawn();}
+  for(let i=Pickups.items.length-1;i>=0;i--){
+    const it=Pickups.items[i],y=landH(it.x,it.z)+0.55;
+    it.g.userData.spin.rotation.y=t*2+it.ph;it.g.position.y=y+Math.sin(t*2.2+it.ph)*0.12;
+    if(Math.hypot(P.pos.x-it.x,P.pos.z-it.z)<1.4&&Math.abs(P.pos.y-y)<2.2){
+      scene.remove(it.g);Pickups.items.splice(i,1);goldGot(it);
+      setTimeout(goldSpawn,15000+Math.random()*25000);
+    }
+  }
+}
+function goldGot(it){
+  const n=Wallet.stats.gold+1;
+  sfx.coin();buzz(20);burst(new V3(it.x,landH(it.x,it.z)+1,it.z),24);
+  let pay=Pickups.PAY;if(n%Pickups.EVERY===0)pay+=Pickups.BONUS;
+  Wallet.coins+=pay;coinPop('+'+pay);
+  toast(`${it.kind==='acorn'?'🌰 Golden acorn':'🐚 Golden shell'}! (${n} collected)`+(n%Pickups.EVERY===0?String.fromCharCode(10)+`Bonus 🪙 ${Pickups.BONUS} for ${n}!`:''),1600);
+  bumpStat('gold');
 }
 /* =========================================================
    Hide & seek: one player disguises themselves as something
@@ -4186,7 +4669,7 @@ $('#tbtns').addEventListener('pointerdown',e=>{
   e.stopPropagation();
   const b=e.target.closest('button');if(!b)return;audioInit();
   const a=b.dataset.act;
-  if(a==='board'){e.preventDefault();setBoard(!P.board);}
+  if(a==='board'){e.preventDefault();rideTap();}
 });
 $('#mapBtn').addEventListener('click',()=>setMap(!MAP.open));
 // chat sits top-right on phones: the button opens it (a real tap, so the keyboard can come up),
@@ -4279,7 +4762,6 @@ function addPing(x,y,z,col,name){
 let redT=0;function redFlash(){redT=0.35;}
 function celebrate(o,d){
   const c=objCenter(o);burst(c);sfx.chime();
-  toast(`${clean(d.gn)} found it!`);
   if(d.gp===myPeer())emote('cheer');
 }
 function updateFx(dt){
@@ -4306,11 +4788,13 @@ function updateRemotes(dt,ts){
     const prop=G.hs&&(G.phase==='hide'||G.phase==='seek')&&p.peer===G.hider&&propSpec(pr.prop)?pr.prop:'';
     const sig=pr.col+'|'+JSON.stringify(pr.fit)+'|'+pr.name+'|'+prop;let r=Remote.get(p.peer);
     if(r&&r.sig!==sig){scene.remove(r.bean);Remote.delete(p.peer);r=null;}
-    if(!r){r={bean:prop?makeProp(prop):makeBean(safeCol(pr.col),safeFit(pr.fit),clean(pr.name)||'Bean'),sig,face:+pr.ry||0};r.bean.position.set(pr.x,+pr.y||0,+pr.z||0);Remote.set(p.peer,r);}
+    if(!r){r={bean:prop?makeProp(prop):makeBean(safeCol(pr.col),safeFit(pr.fit),clean(pr.name)||'Bean'),sig,face:+pr.ry||0,tk:pr.tk,tkAt:0};r.bean.position.set(pr.x,+pr.y||0,+pr.z||0);Remote.set(p.peer,r);}
     const b=r.bean;const k=damp(12,dt);
     b.position.x=lerp(b.position.x,pr.x,k);b.position.y=lerp(b.position.y,(+pr.y||0)+(pr.hb&&!prop?rideLift(pr.fit):0),k);b.position.z=lerp(b.position.z,+pr.z||0,k);
     r.face=angLerp(r.face,+pr.ry||0,k);b.rotation.y=r.face;
-    if(b.userData.body){animBean(b,{an:pr.an|0,em:typeof pr.em==='string'?pr.em:'',emAt:+pr.emAt||0,hb:!!pr.hb},ts);}
+    // a trick starts when we hear about it (their clock may not match ours)
+    if(pr.tk!==r.tk){r.tk=pr.tk;r.tkAt=Date.now();}
+    if(b.userData.body){animBean(b,{an:pr.an|0,em:typeof pr.em==='string'?pr.em:'',emAt:+pr.emAt||0,hb:!!pr.hb,tk:r.tkAt},ts);}
   }
   for(const [k,r] of Remote){if(!seen.has(k)){scene.remove(r.bean);Remote.delete(k);}}
 }
@@ -4367,12 +4851,14 @@ function renderAll(){
   const rid=G.phase==='reveal'&&G.reveal?G.reveal.id:null;
   if(rid!==seen.revealId)setRevealHighlight(rid);
   if(G.phase==='reveal'&&G.reveal&&!G.reveal.found&&G.reveal.id==null&&isSpy&&Spy.r===G.r&&Spy.target!=null&&!seen.spySent){seen.spySent=true;emit('wb.result',{r:G.r,reveal:true,id:Spy.target});}
-  if(G.phase==='recap'&&seen.phase!=='recap'){sfx.fanfare();if(G.found)burst(new V3(P.pos.x,P.pos.y+2,P.pos.z),140);}
+  if(G.phase==='reveal'&&(seen.phase!=='reveal'||G.r!==seen.r))roundCard(true);
+  else if(G.phase!=='reveal')roundCard(false);else if(!$('#roundCard').hidden)roundCard(null);
+  if(G.phase==='recap'&&seen.phase!=='recap'){sfx.fanfare();if(G.found)burst(new V3(P.pos.x,P.pos.y+2,P.pos.z),140);if(seen.played)gameDone();}
   // coins: the finder gets paid for speed, everyone else who was hunting gets a small share
   if(G.phase==='reveal'&&G.reveal&&(G.reveal.found||(G.reveal.hs&&G.reveal.gp))&&seen.played&&seen.paidR!==G.r){
     seen.paidR=G.r;const mine=G.reveal.gp===myPeer();const c=mine?G.reveal.coins:TEAM_SHARE;
     earn(c);seen.earned=(seen.earned||0)+c;if(!G.reveal.hs)pediaAdd(G.reveal.name);
-    if(mine&&!G.reveal.hs){buzz([30,40,60]);lbRecord(G.reveal.pts);}
+    if(mine&&!G.reveal.hs){buzz([30,40,60]);lbRecord(G.reveal.pts);if(G.reveal.secs<15)Wallet.stats.quick++;bumpStat('finds');}
     sys(mine?(G.reveal.hs?(G.reveal.found?`You earned 🪙 ${c} for finding ${G.reveal.name}.`:`You earned 🪙 ${c} for staying hidden.`):`You earned 🪙 ${c} for finding it in ${G.reveal.secs}s.`):`You earned 🪙 ${c} as your share.`);
   }
   if(G.phase==='clue'||G.phase==='pick'||G.phase==='hide'||G.phase==='seek')seen.played=true;else if(G.phase==='lobby'){seen.played=false;seen.earned=0;}
@@ -4427,12 +4913,42 @@ function renderAll(){
     for(const b of $('#modeSeg').children)b.disabled=!host||G.teams;
     $('#freeOpts').hidden=hunt!=='free';$('#dailyOpts').hidden=hunt!=='daily';$('#hideOpts').hidden=hunt!=='hide';
     $('#startBtn').disabled=G.hs&&n<2;$('#hideNeed').hidden=!(G.hs&&n<2);
-    if(G.daily){dailyWatch(G.daily);renderBoard($('#dailyBoard'));}
+    if(G.daily){dailyWatchAny(G.daily);renderBoard($('#dailyBoard'));}
     $('#startBtn').hidden=!host;
   }
   renderSpy();renderRecap();renderPlayers();updateTip();renderExit();
   {const rb=document.querySelector('[data-act=board]'),r=RIDES.find(o=>o[0]===rideOf(myFit));if(rb&&r&&rb.dataset.r!==r[0]){rb.dataset.r=r[0];rb.textContent=r[2]+' Ride';rb.setAttribute('aria-label',r[1]);}}
 }
+// the round card: a pop-up with who found it and how fast (or what it was), with confetti
+let rcT=null;
+function roundCard(open){
+  const el=$('#roundCard');
+  if(open===false){if(!el.hidden){el.hidden=true;clearTimeout(rcT);}return;}
+  const r=G.reveal||{},mine=r.gp&&r.gp===myPeer(),o=r.id!=null?W.list[r.id]:null;
+  const cap=s=>s?s.charAt(0).toUpperCase()+s.slice(1):s;
+  let top,big,sub='',chips=[];
+  if(G.hs){top=r.found?(mine?'🎉 You found them!':`🎉 ${r.by} found them!`):r.why==='time'?'🙈 Still hidden!':'👋 The hider left';
+    big=r.found?`${r.name} is caught`:r.why==='time'?`${r.name} wins the round`:r.name||'';sub=r.pts?`+${r.pts} points`:'';}
+  else if(r.found){
+    const others=G.finds.filter(f=>f.p&&Number.isFinite(f.s));const fastest=others.length>1&&others.every(f=>f.s>=r.secs);
+    top=mine?'🎉 You found it!':`🎉 ${r.by}${r.team?' '+(r.team==='r'?'🔴':'🔵'):''} found it!`;
+    big=(o&&o.e?firstGlyph(o.e)+' ':'')+cap(r.name||'');
+    sub=`⏱ ${r.secs}s · +${r.pts} points`+(fastest?' · 🏅 Fastest this game!':'');
+    chips=(r.bonus||[]).slice();if(r.coins)chips.push(mine?`🪙 +${r.coins} for you`:`🪙 +${TEAM_SHARE} for you`);
+  }else{top='⏰ Time’s up!';big=r.name?`It was ${r.name}`:'The Spy is revealing it…';sub='Follow the ⭐ beacon to see where it was.';}
+  $('#rcTop').textContent=top;$('#rcBig').textContent=big;$('#rcSub').textContent=sub;
+  const ch=$('#rcChips');ch.textContent='';for(const c of chips){const s=document.createElement('span');s.textContent=c;ch.appendChild(s);}
+  el.classList.toggle('good',!!r.found);el.classList.toggle('mine',!!mine);
+  if(open){
+    el.hidden=false;el.classList.remove('pop');void el.offsetWidth;el.classList.add('pop');
+    const cf=el.querySelector('.rcConf');cf.textContent='';
+    if(r.found){const cols=['#FF5D73','#FFD23F','#3DDC97','#4D96FF','#9B5DE5','#FF9F1C'];
+      for(let i=0;i<34;i++){const s=document.createElement('i');s.style.left=(Math.random()*100)+'%';s.style.background=cols[i%cols.length];
+        s.style.animationDelay=(Math.random()*0.35)+'s';s.style.animationDuration=(1.1+Math.random()*0.9)+'s';s.style.setProperty('--dx',(Math.random()*80-40)+'px');s.style.setProperty('--r',(Math.random()*720-360)+'deg');cf.appendChild(s);}}
+    clearTimeout(rcT);rcT=setTimeout(()=>{el.hidden=true;},r.found?3600:4600);
+  }
+}
+$('#roundCard').addEventListener('click',()=>{$('#roundCard').hidden=true;clearTimeout(rcT);});
 function renderPips(){
   const el=$('#pips');el.textContent='';
   if(G.phase==='clue'&&G.kind==='game'){for(let i=0;i<diffOf().lines;i++){const p=document.createElement('span');p.className='pip'+(i<G.lines.length?' on':'');el.appendChild(p);}}
@@ -4444,7 +4960,9 @@ function updateHUDTimers(){
   // hide & seek: seekers see nothing but a countdown while the hider hides
   const bl=$('#blind'),blind=frozenSeeker();bl.hidden=!blind;if(blind)$('#blindN').textContent=Math.ceil(liveLeft('roundLeft')/1000);
   // Easy: warmer/colder, from how far you are from the answer
-  const hot=$('#hot'),showHot=G.phase==='clue'&&!!G.tp;hot.hidden=!showHot;
+  const D=G.daily?DIFF.normal:diffOf(),stuck=G.kind==='game'&&D.round-liveLeft('roundLeft')>=D.hot;
+  const hot=$('#hot'),showHot=G.phase==='clue'&&!!G.tp&&stuck;hot.hidden=!showHot;
+  if(showHot&&D.hot&&seen.hotR!==G.r){seen.hotR=G.r;sfx.hint();toast('🌡️ Stuck? The hot/cold meter is on!',2000);}
   if(showHot){const d=Math.hypot(P.pos.x-G.tp[0],P.pos.z-G.tp[1]),heat=clamp(1-(d-3)/50,0,1);
     const i=hot.querySelector('i');i.style.width=(heat*100)+'%';i.style.background=`hsl(${Math.round(200-200*heat)},85%,55%)`;
     const w=heat>0.85?'Boiling!':heat>0.6?'Hot':heat>0.35?'Warm':'Cold';if($('#hotLbl').textContent!==w)$('#hotLbl').textContent=w;}
@@ -4505,7 +5023,7 @@ function renderRecap(){
   const h=document.createElement('h2');h.textContent=G.found===G.finds.length&&G.found>0?'A perfect hunt!':'That’s a wrap!';
   const big=document.createElement('div');big.className='big';big.textContent=G.score;
   const p=document.createElement('p');p.style.fontWeight='800';p.style.margin='0';p.textContent=`Team score. You found ${G.found} of ${G.finds.length} things.`;
-  const p2=document.createElement('p');p2.className='sub';p2.textContent=[G.daily?'📅 Daily hunt':DIFF[G.diff].label,seen.earned?`🪙 You earned ${seen.earned} coins`:''].filter(Boolean).join(' · ');
+  const p2=document.createElement('p');p2.className='sub';p2.textContent=[G.daily?'📅 Daily challenge':DIFF[G.diff].label,G.daily&&G.dsecs?`⏱ ${fmtT(G.dsecs*1000)}`:'',seen.earned?`🪙 You earned ${seen.earned} coins`:''].filter(Boolean).join(' · ');
   const ul=document.createElement('ul');ul.className='finds';
   G.finds.forEach(f=>{const li=document.createElement('li');const a=document.createElement('span');a.textContent=f.n?(f.n.charAt(0).toUpperCase()+f.n.slice(1)):'A mystery';
     const pts=document.createElement('span');pts.className='pts';pts.textContent=f.p?'+'+f.p:'0';
@@ -4514,6 +5032,7 @@ function renderRecap(){
   const row=document.createElement('div');row.className='row';
   if(amHost()){const again=document.createElement('button');again.className='btn';again.textContent='Play again';again.onclick=()=>{G.phase='lobby';commit();};row.appendChild(again);}
   else{const w=document.createElement('span');w.style.fontWeight='800';w.textContent=`Waiting for ${peerName(hostPeer())} to start another round.`;row.appendChild(w);}
+  if(Net.room){const inv=document.createElement('button');inv.className='btn alt';inv.textContent='📨 Invite';inv.onclick=()=>$('#inviteBtn').click();row.appendChild(inv);}
   const lv=document.createElement('button');lv.className='btn alt';lv.textContent='Wander around';lv.onclick=()=>{wrap.hidden=true;seen.recapGone=true;renderExit();};row.appendChild(lv);
   if(G.teams){const r=G.ts.r||0,bl=G.ts.b||0;h.textContent=r===bl?'It’s a tie!':r>bl?'🔴 Red team wins!':'🔵 Blue team wins!';big.textContent=`🔴 ${r} · 🔵 ${bl}`;
     p.textContent=`Together you found ${G.found} of ${G.finds.length} things.`;}
@@ -4548,6 +5067,7 @@ $('#diffSeg').addEventListener('click',e=>{const b=e.target.closest('button');if
 $('#huntSeg').addEventListener('click',e=>{const b=e.target.closest('button');if(!b||!amHost()||G.phase!=='lobby')return;
   G.hs=b.dataset.hunt==='hide';G.daily=b.dataset.hunt==='daily'?todayKey():'';if(G.daily||G.hs)G.teams=false;if(G.daily){G.mode='game';G.total=DAILY_N;G.diff='normal';}commit();});
 $('#teamSeg').addEventListener('click',e=>{const b=e.target.closest('button');if(!b||!amHost()||G.phase!=='lobby')return;G.teams=b.dataset.teams==='1';if(G.teams)G.mode='game';commit();});
+$('#roomCode').addEventListener('click',()=>$('#inviteBtn').click());
 $('#startBtn').addEventListener('click',()=>{audioInit();if(amHost()&&G.phase==='lobby'){startGame();tryLock();}});
 // fold the clue card away for a clearer view, and back again
 $('#clueToggle').addEventListener('click',e=>{e.stopPropagation();$('#clue').classList.toggle('min');renderAll();});
@@ -4599,6 +5119,8 @@ function drawMap(cv,big){
     rrect(x,px-w/2,py-h/2,w,h,h/2);x.fill();x.lineWidth=on?3:2;x.strokeStyle='#2B2040';x.stroke();
     x.fillStyle='#2B2040';x.fillText(label,px,py+1);
   }
+  // golden acorns and shells
+  for(const it of Pickups.items){const [px,py]=mapPt(it.x,it.z,W_,H_),r=big?5:3;x.beginPath();x.arc(px,py,r,0,TAU);x.fillStyle='#FFC933';x.fill();x.lineWidth=big?2:1.2;x.strokeStyle='#7A5200';x.stroke();}
   // pings
   for(const p of pings){const [px,py]=mapPt(p.x,p.z,W_,H_);x.font=`${big?22:13}px sans-serif`;x.fillText('📍',px,py-6);}
   // friends, then you (an arrow pointing where you face)
@@ -4708,7 +5230,7 @@ function optRow(el,list,slot,cur,onPick){
   });
   if(list.some(([k])=>!isOwned(slot+':'+k))){
     const m=document.createElement('button');m.className='opt more';m.textContent='🛍️ More';m.setAttribute('aria-label','More in the shop');
-    m.onclick=()=>showTab('shop',slot);el.appendChild(m);
+    m.onclick=()=>showTab('shop',list.some(([k])=>!PRICES[slot+':'+k]&&UNLOCKS[slot+':'+k]&&!isOwned(slot+':'+k))&&!list.some(([k])=>PRICES[slot+':'+k]&&!isOwned(slot+':'+k))?'earn':slot);el.appendChild(m);
   }
 }
 function patSwatch(k,col){
@@ -4743,8 +5265,35 @@ function renderWear(){
 /* ---------- shop: everything that costs coins ---------- */
 const SHOP_SECTIONS=[['ride','Rides'],['top','Tops'],['bot','Bottoms'],['shoe','Shoes'],['x','Extras'],['pat','Patterns']];
 const wearing=k=>{const {slot,id}=itemInfo(k);return slot==='top'?myFit.t===id:slot==='bot'?myFit.b===id:slot==='shoe'?myFit.s===id:slot==='x'?myFit.x===id:slot==='ride'?myFit.r===id:myFit.tp===id||myFit.bp===id;};
+// a picture of k on your bean (or its emoji when there's no 3D preview)
+function itemArt(k,art){
+  const it=itemInfo(k);
+  if(it.slot==='pat')art.appendChild(patSwatch(it.id,CLOTH_COLORS[myFit.tc]));
+  else{const src=shopThumb(k);if(src){const im=document.createElement('img');im.src=src;im.alt='';art.appendChild(im);art.classList.add('pic');}else art.textContent=it.emoji;}
+}
+// items you earn by playing: what it takes, and how far along you are
+function renderEarn(list){
+  const sec=document.createElement('section');sec.id='shop-earn';
+  const h=document.createElement('h3');h.textContent='🏆 Earn these by playing';sec.appendChild(h);
+  const grid=document.createElement('div');grid.className='cards';
+  for(const [k,u] of Object.entries(UNLOCKS)){
+    const it=itemInfo(k),owned=isOwned(k),have=Math.min(u.n,statOf(u.goal));
+    const card=document.createElement('div');card.className='card tier-earn'+(Setup.trial===k?' trying':'')+(owned?'':' locked');
+    const art=document.createElement('button');art.className='art';art.setAttribute('aria-label',`Try on ${itemName(k)}`);itemArt(k,art);
+    art.onclick=()=>{Setup.trial=Setup.trial===k?null:k;renderSetup();};
+    const nm=document.createElement('b');nm.textContent=it.name;
+    const tl=document.createElement('small');tl.textContent=u.text;
+    const bar=document.createElement('div');bar.className='goalbar';const fill=document.createElement('i');fill.style.width=(100*have/u.n)+'%';bar.appendChild(fill);
+    const act=document.createElement('button');act.className='btn buy';
+    if(owned){act.textContent=wearing(k)?'Wearing ✓':'Wear';act.disabled=wearing(k);act.onclick=()=>{myFit=withItem(myFit,k);Setup.trial=null;saveMe();renderSetup();};}
+    else{act.textContent=`🔒 ${have} / ${u.n}`;act.disabled=true;act.setAttribute('aria-label',`${itemName(k)}: ${u.text}. ${have} of ${u.n} so far`);}
+    card.append(art,nm,tl);if(!owned)card.appendChild(bar);card.appendChild(act);grid.appendChild(card);
+  }
+  sec.appendChild(grid);list.appendChild(sec);
+}
 function renderShop(){
   const list=$('#shopList');list.textContent='';
+  renderEarn(list);
   for(const [slot,title] of SHOP_SECTIONS){
     const keys=Object.keys(PRICES).filter(k=>k.startsWith(slot+':')).sort((a,b)=>PRICES[a]-PRICES[b]);
     const sec=document.createElement('section');sec.id='shop-'+slot;
@@ -4754,8 +5303,7 @@ function renderShop(){
       const it=itemInfo(k),tier=tierOf(k),owned=isOwned(k),price=PRICES[k];
       const card=document.createElement('div');card.className=`card tier-${tier}`+(Setup.trial===k?' trying':'');
       const art=document.createElement('button');art.className='art';art.setAttribute('aria-label',`Try on ${itemName(k)}`);
-      if(slot==='pat')art.appendChild(patSwatch(it.id,CLOTH_COLORS[myFit.tc]));
-      else{const src=shopThumb(k);if(src){const im=document.createElement('img');im.src=src;im.alt='';art.appendChild(im);art.classList.add('pic');}else art.textContent=it.emoji;}
+      itemArt(k,art);
       art.onclick=()=>{Setup.trial=Setup.trial===k?null:k;renderSetup();};
       const nm=document.createElement('b');nm.textContent=it.name;
       const tl=document.createElement('small');tl.textContent=TIER_NAMES[tier];
@@ -4779,7 +5327,7 @@ function renderSetup(){
   if(Setup.tab==='wear')renderWear();else if(Setup.tab==='shop')renderShop();else if(Setup.tab==='lead'){lbWatch();renderLeaders();}else renderPedia();
   renderCoins();
   const tn=$('#tryNote');
-  tn.textContent=Setup.trial?`Trying on ${itemName(Setup.trial)}${isOwned(Setup.trial)?'':` (🪙 ${PRICES[Setup.trial]})`}`:'';
+  tn.textContent=Setup.trial?`Trying on ${itemName(Setup.trial)}${isOwned(Setup.trial)?'':UNLOCKS[Setup.trial]?` (🏆 ${UNLOCKS[Setup.trial].text.toLowerCase()})`:` (🪙 ${PRICES[Setup.trial]})`}`:'';
   Prev.dress();
 }
 function showTab(tab,slot){
@@ -4904,11 +5452,17 @@ function joinRoom(code,fresh){
   $('#title').hidden=true;$('#hud').hidden=false;
   sys(Net.room?`You’re in room ${code}. Share the code so friends can join.`:`Playing solo in room ${code}.`);
   sys('Find things to earn 🪙 coins (faster finds earn more), then spend them at Frock & Roll, the clothes shop on Market Street.');
-  sendPresence(true);renderAll();tryLock();
+  if(Net.room)sys('📨 Tap your room code (top left) to send friends an invite link.');
+  sendPresence(true);renderAll();tryLock();checkUnlocks();
   roomDocWatch(code);if(fresh)roomDocPrune();
   if(Net.web)setTimeout(()=>{if(myCode===code&&Net.room.status()!=='online')sys('Can’t reach the online server right now, so this room is solo. Try again in a minute.');},12000);
 }
 $('#createBtn').addEventListener('click',()=>joinRoom(genCode(),true));
+// today's challenge: a fresh room, already set up for it (friends can still join before you start)
+$('#dailyBtn').addEventListener('click',()=>{
+  joinRoom(genCode(),true);
+  setTimeout(()=>{if(myCode&&amHost()&&G.phase==='lobby'){Object.assign(G,{hs:false,teams:false,daily:todayKey(),mode:'game',total:DAILY_N,diff:'normal'});commit();}},250);
+});
 $('#joinBtn').addEventListener('click',()=>{const c=clean($('#codeIn').value,4).toUpperCase();if(!/^[A-Z]{4}$/.test(c)){$('#netNote').textContent='Room codes are 4 letters, like KMPX.';$('#netNote').classList.add('err');$('#codeIn').focus();return;}joinRoom(c);});
 $('#codeIn').addEventListener('keydown',e=>{if(e.key==='Enter')$('#joinBtn').click();});
 $('#codeIn').addEventListener('input',e=>{e.target.value=e.target.value.toUpperCase().replace(/[^A-Z]/g,'');});
@@ -5011,8 +5565,8 @@ function frame(now){
   W.foam.material.opacity=0.45+0.25*Math.sin(ts*1.3);W.foam.scale.setScalar(1+0.004*Math.sin(ts*1.3));
   if(myCode&&P.bean){
     {const n=Math.ceil(dt/0.034);for(let i=0;i<n;i++)updatePlayer(dt/n);}updateCamera(dt);sendPresence();updateRemotes(dt,ts);
-    if(P.bean.userData.body)animBean(P.bean,{an:P.an,em:P.em,emAt:P.emAt,hb:P.board,mv:Math.hypot(P.vel.x,P.vel.z)>1},ts);
-    hostTick();updateHUDTimers();updateCompass();
+    if(P.bean.userData.body)animBean(P.bean,{an:P.an,em:P.em,emAt:P.emAt,hb:P.board,tk:P.tk,mv:Math.hypot(P.vel.x,P.vel.z)>1},ts);
+    hostTick();updateHUDTimers();updateCompass();goldTick(ts,dt);
     gullT-=dt;if(gullT<=0){gullT=5+Math.random()*9;const v=clamp((P.pos.z-18)/30,0,1);if(v>0.05)sfx.gull(v);}
     if(redT>0){redT-=dt;}
   }else if(!window.__camHold){
@@ -5031,12 +5585,14 @@ async function boot(){
   netInit();cloudInit();
   try{await Promise.race([Promise.all([document.fonts.load('40px "Lilita One"'),document.fonts.load('900 30px Nunito')]),new Promise(r=>setTimeout(r,2500))]);}catch(e){}
   buildGround();buildSky();buildWater();buildClouds();
-  buildPlaza();buildMarket();buildHarbor();buildHill();buildPark();buildFarm();buildOrchard();buildExtras();buildCountryside();buildVillage();buildMovers();buildRoads();buildGrass();
+  buildPlaza();buildMarket();buildHarbor();buildHill();buildPark();buildFarm();buildOrchard();buildExtras();buildCountryside();buildVillage();buildMovers();buildCritters();buildRoads();buildGrass();
   batchStatic();
   buildMapImage();
   buildCullList();
   onResize();
   $('#loading').hidden=true;
+  // today's challenge board for the title screen (web version: from the relay, a moment after load)
+  setTimeout(()=>dailyWatchAny(todayKey()),1500);
   requestAnimationFrame(frame);
 }
 boot();
@@ -5044,7 +5600,7 @@ boot();
 if(!window.claude&&'serviceWorker' in navigator&&(location.protocol==='https:'||/^(localhost|127\.0\.0\.1)$/.test(location.hostname))){
   addEventListener('load',()=>{navigator.serviceWorker.register('sw.js').catch(()=>{});});
 }
-window.__wb={spySelect,W,P,get G(){return G;},H,startGame,clickAt,makeLadder,locationLine,letterLine,onMsg,commit,joinRoom,players,frame,districtAt,objCenter,Remote,emit,Wallet,dailyPlan,renderer,GFX,Cull,Daily,Cloud,enableTouch,joy,camera,scene,makeBean,animBean,lbRecord,Leaders};
+window.__wb={spySelect,W,P,get G(){return G;},H,startGame,clickAt,makeLadder,locationLine,letterLine,onMsg,commit,joinRoom,players,frame,districtAt,objCenter,Remote,emit,Wallet,dailyPlan,renderer,GFX,Cull,Daily,Cloud,enableTouch,joy,camera,scene,makeBean,animBean,lbRecord,Leaders,Pickups,bumpStat,checkUnlocks,doTrick,rideTap,setBoard,roundCard,dailyWatchAny,myFitSet:f=>{myFit=f;},get myFit(){return myFit;},UNLOCKS,statOf,setMap};
 })();
 
 </script>
