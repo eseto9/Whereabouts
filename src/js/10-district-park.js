@@ -119,7 +119,7 @@ function buildPark(){
     if(keepOut.some(([a,b,d])=>Math.hypot(x-a,z-b)<d))continue;
     keepOut.push([x,z,3]); tree(x,z,srand()<0.35?'pine':'round'); placed++;}
   // trees framing hill and harbor edges
-  [[-34,-30],[-38,-24],[34,-24],[36,-18],[30,-46],[-27,-48],[40,24],[44,18],[34,30],[-26,36],[-32,30],[52,-14],[55,12],[46,-26]].forEach(([x,z])=>{if(edgeDist(x,z)>8.5)tree(x,z,srand()<0.5?'pine':'round');});
+  [[-34,-30],[-38,-24],[30,-46],[-27,-48],[-26,36],[-32,30],[55,12]].forEach(([x,z])=>{if(edgeDist(x,z)>8.5)tree(x,z,srand()<0.5?'pine':'round');});
   // park benches
   [[-33,12,1.2],[-42,-14,0.2]].forEach(([x,z,r])=>{const g=new THREE.Group();g.add(at(box(2.2,0.14,0.6,'#4CB85A'),0,0.55,0));g.add(at(box(2.2,0.5,0.1,'#4CB85A'),0,0.9,-0.28));
     for(const s of[-1,1])g.add(at(box(0.1,0.55,0.55,'#2B2040',{w:0.02}),0.95*s,0.27,0));onGround(g,x,z);g.rotation.y=r;F(g,{k:'bench',n:'a bench',c:['green'],s:'long',m:'wood',p:false});circ(x,z,1.1);});

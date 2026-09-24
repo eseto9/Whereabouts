@@ -79,10 +79,10 @@ function renderShop(){
   }
 }
 function renderSetup(){
-  for(const [t,btn] of [['wear',$('#tabWear')],['shop',$('#tabShop')]])btn.setAttribute('aria-selected',Setup.tab===t);
-  $('#wearView').hidden=Setup.tab!=='wear';$('#shopView').hidden=Setup.tab!=='shop';
+  for(const [t,btn] of [['wear',$('#tabWear')],['shop',$('#tabShop')],['pedia',$('#tabPedia')]])btn.setAttribute('aria-selected',Setup.tab===t);
+  $('#wearView').hidden=Setup.tab!=='wear';$('#shopView').hidden=Setup.tab!=='shop';$('#pediaView').hidden=Setup.tab!=='pedia';
   if(Setup.tab!=='shop')Setup.trial=null;
-  if(Setup.tab==='wear')renderWear();else renderShop();
+  if(Setup.tab==='wear')renderWear();else if(Setup.tab==='shop')renderShop();else renderPedia();
   renderCoins();
   const tn=$('#tryNote');
   tn.textContent=Setup.trial?`Trying on ${itemName(Setup.trial)}${isOwned(Setup.trial)?'':` (🪙 ${PRICES[Setup.trial]})`}`:'';
@@ -94,7 +94,31 @@ function showTab(tab,slot){
 }
 $('#tabWear').addEventListener('click',()=>showTab('wear'));
 $('#tabShop').addEventListener('click',()=>showTab('shop'));
+$('#tabPedia').addEventListener('click',()=>showTab('pedia'));
 
+/* ---------- Townpedia: a page for every findable thing ---------- */
+const AREA_NAMES={square:'Town Square',market:'Market Street',harbor:'Harbor',hill:'Hillside',park:'Park',farm:'Farm',orchard:'Orchard',sea:'At sea',sky:'In the sky'};
+const firstGlyph=s=>{s=s||'';try{if(window.Intl&&Intl.Segmenter)return [...new Intl.Segmenter().segment(s)][0]?.segment||'';}catch(e){}return Array.from(s)[0]||'';};
+function areaOf(o){if(!o.area){const c=objCenter(o);o.area=districtAt(c.x,c.y,c.z);}return o.area;}
+function renderPedia(){
+  const all=W.list.filter(o=>o.p),found=new Set(Wallet.found);
+  const have=all.filter(o=>found.has(o.n)).length;
+  $('#pediaCount').textContent=`${have} of ${all.length} found. Every ${PEDIA_STEP} new finds earns 🪙 ${PEDIA_BONUS}.`;
+  const areas=['all',...Object.keys(AREA_NAMES).filter(a=>all.some(o=>areaOf(o)===a))];
+  if(!areas.includes(Setup.area))Setup.area='all';
+  const chips=$('#pediaAreas');chips.textContent='';
+  for(const a of areas){const n=all.filter(o=>a==='all'||areaOf(o)===a),h=n.filter(o=>found.has(o.n)).length;
+    const b=document.createElement('button');b.className='chip';b.textContent=`${a==='all'?'All':AREA_NAMES[a]} ${h}/${n.length}`;b.setAttribute('aria-pressed',Setup.area===a);
+    b.onclick=()=>{Setup.area=a;renderPedia();};chips.appendChild(b);}
+  const list=$('#pediaList');list.textContent='';
+  for(const o of all.filter(o=>Setup.area==='all'||areaOf(o)===Setup.area).sort((a,b)=>(found.has(b.n)-found.has(a.n))||a.n.localeCompare(b.n))){
+    const got=found.has(o.n),d=document.createElement('div');d.className='pcard'+(got?'':' unknown');
+    const i=document.createElement('span');i.className='pic';i.textContent=got?firstGlyph(o.e)||'⭐':'❓';
+    const n=document.createElement('b');n.textContent=got?o.n.charAt(0).toUpperCase()+o.n.slice(1):'???';
+    const a=document.createElement('small');a.textContent=AREA_NAMES[areaOf(o)]||'';
+    d.append(i,n,a);list.appendChild(d);
+  }
+}
 // a random outfit from what you own
 function surprise(){
   const pickOwn=(list,slot,skipNone)=>pick(list.filter(([k])=>isOwned(slot+':'+k)&&!(skipNone&&k==='none')))[0];
@@ -173,3 +197,28 @@ $('#createBtn').addEventListener('click',()=>joinRoom(genCode(),true));
 $('#joinBtn').addEventListener('click',()=>{const c=clean($('#codeIn').value,4).toUpperCase();if(!/^[A-Z]{4}$/.test(c)){$('#netNote').textContent='Room codes are 4 letters, like KMPX.';$('#netNote').classList.add('err');$('#codeIn').focus();return;}joinRoom(c);});
 $('#codeIn').addEventListener('keydown',e=>{if(e.key==='Enter')$('#joinBtn').click();});
 $('#codeIn').addEventListener('input',e=>{e.target.value=e.target.value.toUpperCase().replace(/[^A-Z]/g,'');});
+
+/* ---------- invites: a link with the room code in it ---------- */
+function inviteLink(){if(!Net.web)return '';const u=new URL(location.href);u.search='';u.hash='';u.searchParams.set('room',myCode);return u.toString();}
+$('#inviteBtn').addEventListener('click',async()=>{
+  if(!myCode)return;
+  const url=inviteLink(),text=url?`Come play Whereabouts with me! Tap to join my room (${myCode}):`:`Come play Whereabouts with me! My room code is ${myCode}.`;
+  try{if(navigator.share){await navigator.share(url?{title:'Whereabouts',text,url}:{title:'Whereabouts',text});return;}}catch(e){if(e&&e.name==='AbortError')return;}
+  try{await navigator.clipboard.writeText(url?`${text} ${url}`:text);toast('Invite copied!'+String.fromCharCode(10)+'Paste it to a friend',1800);}
+  catch(e){sys(url?`Send your friends this link: ${url}`:`Tell your friends your room code: ${myCode}`);}
+});
+// opened from an invite: fill in the code and point at Join
+{const q=new URLSearchParams(location.search).get('room');
+ if(q&&/^[A-Za-z]{4}$/.test(q)){const c=q.toUpperCase();$('#codeIn').value=c;
+   const n=$('#inviteNote');n.hidden=false;n.textContent=`🎉 You’re invited to room ${c}! Pick your look, then tap Join.`;$('#joinBtn').classList.add('pulse');
+   $('#joinBtn').addEventListener('click',()=>{try{history.replaceState(null,'',location.pathname);}catch(e){}},{once:true});}}
+
+/* ---------- graphics setting (applies when the page reloads) ---------- */
+function renderGfx(){for(const b of $('#gfxSeg').children)b.setAttribute('aria-pressed',b.dataset.q===GFX.q);}
+$('#gfxSeg').addEventListener('click',e=>{
+  const b=e.target.closest('button');if(!b||b.dataset.q===GFX.q)return;
+  try{localStorage.setItem('wb.gfx',b.dataset.q);}catch(err){}
+  if(myCode){GFX.q=b.dataset.q;renderGfx();setupNote('Graphics will change next time you open the game.');}
+  else location.reload();
+});
+renderGfx();

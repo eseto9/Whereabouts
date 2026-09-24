@@ -63,3 +63,5 @@ function chatPeek(){
   fb.addEventListener('click',()=>{document.documentElement.requestFullscreen({navigationUI:'hide'}).then(()=>{try{screen.orientation.lock('landscape').catch(()=>{});}catch(e){}}).catch(()=>{});});
   tip.hidden=standalone||!iOS||!!window.claude;
 }
+// a little buzz for finds and misses (Android; iPhones don't let websites vibrate)
+function buzz(p){if(touchMode&&navigator.vibrate){try{navigator.vibrate(p);}catch(e){}}}

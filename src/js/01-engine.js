@@ -15,14 +15,23 @@ const sr=(a,b)=>a+srand()*(b-a);
 const pick=a=>a[Math.floor(Math.random()*a.length)];
 const wclock=()=>(Date.now()/1000)%100000;   // shared-ish clock so moving things line up between players
 
+// graphics quality: auto picks high on computers and mid on phones
+const GFX=(()=>{
+  let q='auto';try{q=localStorage.getItem('wb.gfx')||'auto';}catch(e){}
+  const coarse=!!(window.matchMedia&&matchMedia('(pointer:coarse)').matches);
+  const lvl=q==='high'||q==='low'?q:(coarse?'mid':'high');
+  // cull: small things aren't drawn beyond this; ink: outlines aren't drawn beyond this
+  return {q,lvl,pr:lvl==='high'?2:lvl==='mid'?1.5:1,shadow:lvl!=='low',smap:lvl==='high'?2048:1024,cull:lvl==='high'?90:lvl==='mid'?60:42,ink:lvl==='high'?1e9:lvl==='mid'?40:26,aa:lvl!=='low'};
+})();
 const canvas=$('#c');
 let renderer;
 try{
-  renderer=new THREE.WebGLRenderer({canvas,antialias:true,powerPreference:'high-performance'});
+  renderer=new THREE.WebGLRenderer({canvas,antialias:GFX.aa,powerPreference:'high-performance'});
 }catch(e){ $('#nogl').hidden=false; $('#loading').hidden=true; return; }
-renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
+renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,GFX.pr));
 renderer.setSize(window.innerWidth,window.innerHeight,false);
-renderer.shadowMap.enabled=true;
+renderer.shadowMap.enabled=GFX.shadow;
+if(GFX.shadow&&GFX.lvl!=='high')renderer.shadowMap.autoUpdate=false;   // refreshed every other frame instead
 renderer.shadowMap.type=THREE.PCFSoftShadowMap;
 
 const scene=new THREE.Scene();
@@ -38,8 +47,8 @@ scene.add(hemi);
 const SUN_DIR=new V3(-0.55,0.6,0.58).normalize();
 const sun=new THREE.DirectionalLight(0xFFE0B0,1.0);
 sun.position.copy(SUN_DIR).multiplyScalar(140);
-sun.castShadow=true;
-sun.shadow.mapSize.set(2048,2048);
+sun.castShadow=GFX.shadow;
+sun.shadow.mapSize.set(GFX.smap,GFX.smap);
 {const c=sun.shadow.camera;c.left=-82;c.right=82;c.top=82;c.bottom=-82;c.near=20;c.far=320;}
 sun.shadow.bias=-0.0006;
 sun.shadow.normalBias=0.05;

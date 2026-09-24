@@ -13,9 +13,10 @@ const PRICES={
 };
 const TEAM_SHARE=5;   // what everyone else gets when a teammate finds something
 const SLOT_LISTS={top:TOPS,bot:BOTTOMS,shoe:SHOES,pat:PATTERNS,x:EXTRAS};
-const Wallet={coins:0,owned:[],at:0};
+const Wallet={coins:0,owned:[],found:[],at:0};   // found: names in your Townpedia
 try{const s=JSON.parse(localStorage.getItem('wb.wallet')||'{}');
-  Wallet.coins=Math.max(0,Math.floor(+s.coins||0));Wallet.owned=Array.isArray(s.owned)?s.owned.filter(k=>PRICES[k]):[];Wallet.at=+s.at||0;}catch(e){}
+  Wallet.coins=Math.max(0,Math.floor(+s.coins||0));Wallet.owned=Array.isArray(s.owned)?s.owned.filter(k=>PRICES[k]):[];
+  Wallet.found=Array.isArray(s.found)?s.found.filter(n=>typeof n==='string').slice(0,500):[];Wallet.at=+s.at||0;}catch(e){}
 const isOwned=k=>!PRICES[k]||Wallet.owned.includes(k);
 const tierOf=k=>{const p=PRICES[k]||0;return p>=300?'legend':p>=150?'fancy':p?'nice':'basic';};
 const TIER_NAMES={basic:'Starter',nice:'Nice',fancy:'Fancy',legend:'Legendary'};
@@ -53,6 +54,7 @@ function walletMerge(d){
   if(!d||typeof d!=='object')return;
   const theirs=(Array.isArray(d.owned)?d.owned:[]).filter(k=>PRICES[k]&&!Wallet.owned.includes(k));
   Wallet.owned.push(...theirs);
+  for(const n of (Array.isArray(d.found)?d.found:[]))if(typeof n==='string'&&!Wallet.found.includes(n)&&Wallet.found.length<500)Wallet.found.push(n);
   if((+d.at||0)>Wallet.at){Wallet.coins=Math.max(0,Math.floor(+d.coins||0));Wallet.at=+d.at;}
   walletStore();renderCoins();if(!$('#title').hidden)renderSetup();
 }
@@ -60,4 +62,14 @@ function renderCoins(){for(const el of document.querySelectorAll('.coinsN'))el.t
 function coinPop(text){
   const el=$('#coinPop');if(!el)return;el.textContent=text;
   el.classList.remove('on');void el.offsetWidth;el.classList.add('on');
+}
+/* ---------- Townpedia: everything you've found, and a bonus every 20 ---------- */
+const PEDIA_STEP=20,PEDIA_BONUS=40;
+function pediaAdd(name){
+  if(!name||Wallet.found.includes(name)||!W.list.some(o=>o.p&&o.n===name))return;
+  Wallet.found.push(name);
+  const n=Wallet.found.length;
+  if(n%PEDIA_STEP===0){Wallet.coins+=PEDIA_BONUS;sys(`📖 Townpedia: ${n} things found! Here’s 🪙 ${PEDIA_BONUS}.`);coinPop('+'+PEDIA_BONUS);}
+  else sys(`📖 New in your Townpedia: ${name} (${n} found).`);
+  walletSave();
 }

@@ -67,7 +67,7 @@ async function walletPull(){
   try{const snap=await walletRef().get();if(snap.exists)walletMerge(snap.data());}catch(e){}
   walletPush();
 }
-function walletPush(){if(Cloud.db&&Cloud.uid){try{walletWrite(walletRef(),{coins:Wallet.coins,owned:Wallet.owned.slice(),at:Wallet.at});}catch(e){}}}
+function walletPush(){if(Cloud.db&&Cloud.uid){try{walletWrite(walletRef(),{coins:Wallet.coins,owned:Wallet.owned.slice(),found:Wallet.found.slice(),at:Wallet.at});}catch(e){}}}
 
 /* ---------- today's daily-hunt board ---------- */
 const Daily={key:'',rows:[],unsub:null};

@@ -9,19 +9,24 @@ const DIFF={
   hard:{label:'Hard',hint:28000,round:90000,mult:1.5,start:1,lines:3},
 };
 const diffOf=()=>DIFF[G.diff]||DIFF.normal;
-function freshState(){return {phase:'lobby',mode:'alt',total:8,diff:'normal',daily:'',idx:0,score:0,found:0,streak:0,best:0,sessLeft:0,roundLeft:0,hintIn:0,lines:[],kind:'game',spy:null,spyName:'',mv:false,finds:[],reveal:null,dailyMsg:'',r:0,v:0,hostPeer:null};}
+function freshState(){return {teams:false,tm:{},ts:{r:0,b:0},hs:false,hider:null,hiderName:'',pts:{},pnames:{},tp:null,phase:'lobby',mode:'alt',total:8,diff:'normal',daily:'',idx:0,score:0,found:0,streak:0,best:0,sessLeft:0,roundLeft:0,hintIn:0,lines:[],kind:'game',spy:null,spyName:'',mv:false,finds:[],reveal:null,dailyMsg:'',r:0,v:0,hostPeer:null};}
 let G=freshState();G._recv=Date.now();
 const H={target:null,obj:null,ladder:null,fmtLast:null,used:new Set(),plan:null,wrong:false,sessEnd:0,roundEnd:0,nextHintAt:0,pickEnd:0,revealEnd:0,clueStart:0,spyRot:0,lastSync:0,lastTick:0,findIdx:-1};
 const Spy={target:null,r:-1};
 let wasHost=false;
+// answers this device's host has handed out lately (kept across visits), so games don't repeat
+const RECENT_KEY='wb.recent',RECENT_MAX=90;
+function recentAnswers(){try{const a=JSON.parse(localStorage.getItem(RECENT_KEY)||'[]');return Array.isArray(a)?a:[];}catch(e){return [];}}
+function rememberAnswer(n){try{const a=recentAnswers().filter(x=>x!==n);a.push(n);localStorage.setItem(RECENT_KEY,JSON.stringify(a.slice(-RECENT_MAX)));}catch(e){}}
 const liveLeft=f=>Math.max(0,(G[f]||0)-(Date.now()-(G._recv||Date.now())));
 
 function commit(){
   const now=Date.now();
   G.hostPeer=myPeer();G.v=(G.v||0)+1;
   const inPlay=G.phase!=='lobby'&&G.phase!=='recap';
+  if(G.teams&&inPlay)assignTeams();
   G.sessLeft=inPlay?Math.max(0,H.sessEnd-now):0;
-  G.roundLeft=!inPlay?0:Math.max(0,(G.phase==='pick'?H.pickEnd:G.phase==='reveal'?H.revealEnd:H.roundEnd)-now);
+  G.roundLeft=!inPlay?0:Math.max(0,(G.phase==='pick'?H.pickEnd:G.phase==='reveal'?H.revealEnd:G.phase==='hide'?H.hideEnd:G.phase==='seek'?H.seekEnd:H.roundEnd)-now);
   G.hintIn=(G.phase==='clue'&&G.kind==='game'&&G.lines.length<diffOf().lines)?Math.max(0,H.nextHintAt-now):0;
   G._recv=now;
   const out=Object.assign({},G);delete out._recv;
@@ -35,16 +40,22 @@ function adoptState(s,recv){
   G.lines=Array.isArray(G.lines)?G.lines.slice(0,4).map(x=>clean(x,160)):[];
   G.finds=Array.isArray(G.finds)?G.finds.slice(0,12):[];
   if(!DIFF[G.diff])G.diff='normal';
+  G.tp=Array.isArray(G.tp)&&G.tp.length===2&&G.tp.every(Number.isFinite)?G.tp:null;
   G.daily=typeof G.daily==='string'&&/^\d{4}-\d\d-\d\d$/.test(G.daily)?G.daily:'';
   G.dailyMsg=clean(G.dailyMsg,80);
+  const peerMap=(o,ok)=>o&&typeof o==='object'&&!Array.isArray(o)?Object.fromEntries(Object.entries(o).slice(0,32).filter(([k,v])=>typeof k==='string'&&ok(v))):{};
+  G.teams=!!G.teams;G.tm=peerMap(G.tm,v=>v==='r'||v==='b');G.ts={r:Math.max(0,+(G.ts&&G.ts.r)||0),b:Math.max(0,+(G.ts&&G.ts.b)||0)};
+  G.hs=!!G.hs;G.hider=typeof G.hider==='string'?G.hider:null;G.hiderName=clean(G.hiderName);
+  G.pts=peerMap(G.pts,v=>Number.isFinite(v));G.pnames=Object.fromEntries(Object.entries(peerMap(G.pnames,v=>typeof v==='string')).map(([k,v])=>[k,clean(v)]));
   if(G.reveal&&typeof G.reveal==='object'){const R=G.reveal;
     R.bonus=Array.isArray(R.bonus)?R.bonus.slice(0,4).map(x=>clean(x,40)):[];
-    R.gp=clean(R.gp,40);R.secs=clamp(Math.round(+R.secs||0),0,600);R.coins=clamp(Math.round(+R.coins||0),0,60);}
+    R.gp=clean(R.gp,40);R.team=R.team==='r'||R.team==='b'?R.team:'';R.hs=!!R.hs;R.why=clean(R.why,8);R.secs=clamp(Math.round(+R.secs||0),0,600);R.coins=clamp(Math.round(+R.coins||0),0,60);}
   renderAll();
 }
 function hostTick(){
   const now=Date.now();if(now-H.lastTick<200)return;H.lastTick=now;
   const ah=amHost();if(ah&&!wasHost)takeOver();wasHost=ah;if(!ah)return;
+  if(G.hs&&G.phase!=='lobby'&&G.phase!=='recap'){if(hideTick(now))return;if(now-H.lastSync>2000)commit();return;}
   const inPlay=G.phase!=='lobby'&&G.phase!=='recap';
   if(inPlay&&now>=H.sessEnd&&G.phase!=='reveal'){endGame();return;}
   if(G.phase==='pick'){
@@ -66,6 +77,9 @@ function takeOver(){
   if(!myCode)return;const now=Date.now();
   if(G.phase==='lobby'||G.phase==='recap'){commit();return;}
   if(G.daily&&!H.plan)H.plan=dailyPlan(G.daily);
+  if(G.hs){if(!H.order)H.order=sortedPlayers().map(p=>p.peer);H.sessEnd=now+10*60000;
+    if(G.phase==='hide')H.hideEnd=now+liveLeft('roundLeft');if(G.phase==='seek')H.seekEnd=now+Math.max(10000,liveLeft('roundLeft'));if(G.phase==='reveal')H.revealEnd=now+2500;
+    commit();return;}
   H.sessEnd=now+Math.max(15000,liveLeft('sessLeft'));
   if(G.phase==='clue'&&G.kind==='game'&&H.target==null){sys('New host! Here’s a fresh clue.');G.idx--;nextClue();return;}
   if(G.phase==='pick')H.pickEnd=now+liveLeft('roundLeft');
@@ -76,7 +90,9 @@ function takeOver(){
 function startGame(){
   if(!amHost())return;
   H.used=new Set();H.spyRot=Math.floor(Math.random()*6);
-  if(G.daily){G.mode='game';G.total=DAILY_N;G.diff='normal';H.plan=dailyPlan(G.daily);}else H.plan=null;
+  if(G.hs){startHideSeek();return;}
+  if(G.daily){G.mode='game';G.total=DAILY_N;G.diff='normal';G.teams=false;H.plan=dailyPlan(G.daily);}else H.plan=null;
+  if(G.teams){G.mode='game';G.tm={};G.ts={r:0,b:0};assignTeams();}
   G.score=0;G.found=0;G.streak=0;G.best=0;G.finds=[];G.dailyMsg='';G.idx=-1;
   H.sessEnd=Date.now()+G.total*SESSION_PER;
   nextClue();
@@ -85,7 +101,7 @@ function nextClue(){
   const now=Date.now();G.idx++;
   if(G.idx>=G.total||now>=H.sessEnd){endGame();return;}
   const n=players().length;let kind='game';
-  if(!G.daily){
+  if(!G.daily&&!G.teams){
     if(G.mode==='player'&&n>=2)kind='player';
     if(G.mode==='alt'&&n>=2&&G.idx%2===1)kind='player';
   }
@@ -95,15 +111,18 @@ function startGameClue(){
   const now=Date.now(),D=diffOf();
   let o,ladder;
   const planned=H.plan&&H.plan[G.idx]&&W.list[H.plan[G.idx].id];
-  if(planned){o=planned;ladder=makeLadder(o,null,H.plan[G.idx].fmt);}
+  if(planned){o=planned;ladder=makeLadder(o,null,null,seededRng(H.plan[G.idx].seed));}
   else{
     let pool=W.list.filter(o=>o.p&&!H.used.has(o.id));if(!pool.length){H.used.clear();pool=W.list.filter(o=>o.p);}
     // easy: big, still things; hard: the small stuff
     if(G.diff==='easy'){const big=pool.filter(o=>!o.mv&&objSize(o)>=1.6);if(big.length)pool=big;}
     if(G.diff==='hard'){const small=pool.filter(o=>objSize(o)<2.2);if(small.length)pool=small;}
+    const recent=new Set(recentAnswers()),fresh=pool.filter(o=>!recent.has(o.n));if(fresh.length>=3)pool=fresh;
     o=pick(pool);ladder=makeLadder(o,H.fmtLast,G.diff==='easy'?EASY_FMTS:G.diff==='hard'?HARD_FMTS:null);
   }
-  H.used.add(o.id);H.target=o.id;H.obj=o;H.ladder=ladder;H.fmtLast=ladder.fmt;H.wrong=false;
+  H.used.add(o.id);H.target=o.id;H.obj=o;H.ladder=ladder;H.fmtLast=ladder.fmt;H.wrong=false;rememberAnswer(o.n);
+  // Easy shows a warmer/colder meter, so its players get the target's spot on the map
+  if(G.diff==='easy'&&!G.daily){const c=objCenter(o);G.tp=[Math.round(c.x*10)/10,Math.round(c.z*10)/10];}else G.tp=null;
   const lines=[ladder.l1];if(D.start>1)lines.push(ladder.l2);
   Object.assign(G,{kind:'game',spy:null,spyName:'',lines,mv:!!o.mv,phase:'clue',reveal:null});G.r++;
   H.clueStart=now;H.roundEnd=now+D.round;H.nextHintAt=now+D.hint;
@@ -111,7 +130,7 @@ function startGameClue(){
 }
 function startPick(){
   const now=Date.now();const ps=sortedPlayers();const sp=ps[H.spyRot++%ps.length];
-  Object.assign(G,{kind:'player',spy:sp.peer,spyName:clean(sp.presence.name)||'Someone',lines:[],mv:false,phase:'pick',reveal:null});G.r++;
+  Object.assign(G,{tp:null,kind:'player',spy:sp.peer,spyName:clean(sp.presence.name)||'Someone',lines:[],mv:false,phase:'pick',reveal:null});G.r++;
   H.target=null;H.obj=null;H.wrong=false;H.pickEnd=now+PICK_MS;
   commit();
 }
@@ -122,6 +141,13 @@ function revealUnsolved(){
   G.finds.push({c:(G.lines[0]||'').slice(0,110),n:id!=null?W.list[id].n:'',by:'',p:0});H.findIdx=G.finds.length-1;
   G.phase='reveal';G.reveal={found:false,id,name:id!=null?W.list[id].n:'',by:'',pts:0,bonus:[]};
   H.revealEnd=now+REVEAL_MS;commit();
+}
+// Red vs Blue: everyone gets a side, newcomers join the smaller team
+function assignTeams(){
+  const ps=sortedPlayers(),tm={};let r=0,b=0;
+  for(const p of ps){const t=G.tm[p.peer];if(t==='r'||t==='b'){tm[p.peer]=t;t==='r'?r++:b++;}}
+  for(const p of ps)if(!tm[p.peer]){const t=r<=b?'r':'b';tm[p.peer]=t;t==='r'?r++:b++;}
+  G.tm=tm;
 }
 function endGame(){G.phase='recap';H.target=null;commit();if(G.daily)dailyAfterGame();}
 
@@ -138,9 +164,10 @@ function applyResultAsHost(d,now){
     G.streak=(G.streak||0)+1;G.best=Math.max(G.best||0,G.streak);
     if(G.streak>=2){const s=10*(Math.min(G.streak,6)-1);pts+=s;bonus.push(`🔥 ${G.streak} in a row +${s}`);}
     G.score+=pts;G.found++;
+    const team=G.teams?G.tm[d.gp]:null;if(team)G.ts[team]=(G.ts[team]||0)+pts;
     G.finds.push({c:(G.lines[0]||'').slice(0,110),n:o.n,by:clean(d.gn),p:pts});
     const ms=now-H.clueStart;
-    G.phase='reveal';G.reveal={found:true,id:d.id,name:o.n,by:clean(d.gn),pts,bonus,gp:String(d.gp||''),secs:Math.round(ms/1000),coins:coinsFor(ms,D.mult)};
+    G.phase='reveal';G.reveal={found:true,id:d.id,name:o.n,by:clean(d.gn),pts,bonus,team:team||'',gp:String(d.gp||''),secs:Math.round(ms/1000),coins:coinsFor(ms,D.mult)};
     H.revealEnd=now+REVEAL_MS;commit();
   }else{H.sessEnd-=5000;H.wrong=true;commit();}
 }
@@ -176,7 +203,7 @@ function onMsg(topic,m){
         if(!celebrated.has(G.r)){celebrated.add(G.r);celebrate(o,d);}
         if(amHost())applyResultAsHost(d,now);
       }else{
-        if(d.gp===myPeer()){sfx.thud();flashOutline(o,RED,0.8);toast(`Not the ${o.n.replace(/^(the|a|an) /,'')}\n−5 seconds`);redFlash();}
+        if(d.gp===myPeer()){sfx.thud();buzz(120);flashOutline(o,RED,0.8);toast(`Not the ${o.n.replace(/^(the|a|an) /,'')}\n−5 seconds`);redFlash();}
         else sys(`${clean(d.gn)} tried ${o.n}. Nope!`);
         if(amHost())applyResultAsHost(d,now);
       }
@@ -196,6 +223,7 @@ function onMsg(topic,m){
       const txt=clean(d.t,120);if(!txt)return;
       G.lines=[txt];G.mv=!!d.mv;G.phase='clue';H.wrong=false;H.roundEnd=now+PROUND_MS;H.clueStart=now;commit();break;
     }
+    case 'wb.tag':{onTag(m,d);break;}
     case 'wb.spyhint':{
       if(!amHost()||m.peer!==G.spy||G.phase!=='clue'||G.kind!=='player'||d.r!==G.r||G.lines.length>=3)return;
       const txt=clean(d.t,110);if(!txt)return;G.lines.push('…'+txt.replace(/^…+/,''));commit();break;

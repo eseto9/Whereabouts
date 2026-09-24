@@ -2,7 +2,7 @@
    Networking (room capability; a public web relay outside Claude;
    a solo loopback when neither is there)
    ========================================================= */
-const TOPICS=['wb.state','wb.guess','wb.result','wb.chat','wb.ping','wb.spyclue','wb.spyhint'];
+const TOPICS=['wb.state','wb.guess','wb.result','wb.chat','wb.ping','wb.spyclue','wb.spyhint','wb.tag'];
 const Net={room:null,local:true,web:false,myPres:{},warned:false,resolved:false};
 let myCode=null,myName='',myCol=BEAN_COLORS[0],myFit=Object.assign({},DEFAULT_FIT);
 function clean(s,n){return String(s==null?'':s).replace(/[\u0000-\u001f\u007f-\u009f\u00ad\u200b-\u200f\u202a-\u202e\u2060-\u206f\ufeff\ue000-\uf8ff]/g,'').trim().slice(0,n||14);}

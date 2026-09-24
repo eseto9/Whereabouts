@@ -10,11 +10,11 @@ function seededRng(str){
 // the town is built the same way everywhere, so the same seed picks the same things
 function dailyPlan(key){
   const rng=seededRng('whereabouts:'+key);
-  const pool=W.list.filter(o=>o.p&&!o.mv);const plan=[];let last=null;
+  const pool=W.list.filter(o=>o.p&&!o.mv);const plan=[];
+  // each clue gets its own seed, so its format and riddle come out the same for everyone
   while(plan.length<DAILY_N&&pool.length){
     const o=pool.splice(Math.floor(rng()*pool.length),1)[0];
-    let fs=ladderFormats(o).filter(x=>x!==last);if(!fs.length)fs=ladderFormats(o);if(!fs.length)continue;
-    const fmt=fs[Math.floor(rng()*fs.length)];last=fmt;plan.push({id:o.id,fmt});
+    if(ladderFormats(o).length)plan.push({id:o.id,seed:key+':'+plan.length});
   }
   return plan;
 }

@@ -2,7 +2,7 @@
    UI
    ========================================================= */
 const compassEl=$('#compass');
-const CM=[['N',0,-1e5],['E',1e5,0],['S',0,1e5],['W',-1e5,0],['⛲',0,0],['🛒',40,0],['⚓',0,55],['🏡',0,-43],['🌳',-38,6]].map(([t,x,z])=>{const e=document.createElement('span');e.className='tick';e.textContent=t;compassEl.appendChild(e);return {e,x,z};});
+const CM=[['N',0,-1e5],['E',1e5,0],['S',0,1e5],['W',-1e5,0],['⛲',0,0],['🛒',40,0],['⚓',0,55],['🏡',0,-43],['🌳',-38,6],['🚜',40,22],['🍎',38,-21]].map(([t,x,z])=>{const e=document.createElement('span');e.className='tick';e.textContent=t;compassEl.appendChild(e);return {e,x,z};});
 const dotEls=new Map();
 function compassX(x,z){const b=Math.atan2(x-P.pos.x,z-P.pos.z);let d=((b-P.yaw+Math.PI)%TAU+TAU)%TAU-Math.PI;return d;}
 function updateCompass(){
@@ -10,7 +10,7 @@ function updateCompass(){
   const place=(el,x,z)=>{const d=compassX(x,z);if(Math.abs(d)>1.25){el.style.display='none';return;}el.style.display='';el.style.left=(W2-d*k)+'px';};
   for(const m of CM)place(m.e,m.x,m.z);
   const seen=new Set();
-  for(const [peer,r] of Remote){seen.add(peer);let el=dotEls.get(peer);if(!el){el=document.createElement('span');el.className='dot';compassEl.appendChild(el);dotEls.set(peer,el);}
+  for(const [peer,r] of Remote){if(!r.bean.userData.col||(G.hs&&peer===G.hider&&hiding()))continue;seen.add(peer);let el=dotEls.get(peer);if(!el){el=document.createElement('span');el.className='dot';compassEl.appendChild(el);dotEls.set(peer,el);}
     el.style.background=r.bean.userData.col;place(el,r.bean.position.x,r.bean.position.z);}
   for(const [peer,el] of dotEls){if(!seen.has(peer)){el.remove();dotEls.delete(peer);}}
   for(const p of pings)place(p.el,p.x,p.z);
@@ -32,51 +32,60 @@ function renderPlayers(){
   for(const p of sortedPlayers()){
     const li=document.createElement('li');const sw=document.createElement('span');sw.className='sw2';sw.style.background=safeCol(p.presence.col);li.appendChild(sw);
     const n=document.createElement('span');n.textContent=(clean(p.presence.name)||'Bean')+(p.sameTab?' (you)':'');li.appendChild(n);
-    const tags=[];if(p.peer===hp)tags.push('👑');if(p.peer===G.spy&&(G.phase==='pick'||G.phase==='clue'))tags.push('🕵️');
+    const tags=[];if(G.teams&&G.tm[p.peer])tags.push(G.tm[p.peer]==='r'?'🔴':'🔵');if(G.hs&&p.peer===G.hider&&hiding())tags.push('🙈');if(p.peer===hp)tags.push('👑');if(p.peer===G.spy&&(G.phase==='pick'||G.phase==='clue'))tags.push('🕵️');
     if(tags.length){const t=document.createElement('span');t.textContent=tags.join(' ');t.title=(p.peer===hp?'Host':'')+(tags.length>1?' and Spy':p.peer!==hp?'Spy':'');li.appendChild(t);}
     ul.appendChild(li);
   }
 }
 const seen={phase:null,r:-1,n:0,revealId:null};
 function renderAll(){
-  const me=myPeer();const isSpy=G.spy===me;
+  const me=myPeer();const isSpy=G.spy===me;const prevPhase=seen.phase,prevR=seen.r;
   // transitions
   if(G.r!==seen.r){clearSpy();setRevealHighlight(null);if(G.phase==='clue'){sfx.clue();toast(G.kind==='player'?`New clue from ${G.spyName}!`:'New clue!',1400);}}
   if(G.phase==='pick'&&(seen.phase!=='pick'||G.r!==seen.r)){if(isSpy){sfx.spy();toast('You’re the Spy!\nClick something to pick it.',2600);}}
   if(G.phase==='clue'&&seen.phase==='pick'&&G.r===seen.r){sfx.clue();toast(`${G.spyName} spies something…`,1500);}
   if(G.phase==='clue'&&G.r===seen.r&&G.lines.length>seen.n&&seen.phase==='clue')sfx.hint();
-  if(G.phase==='reveal'&&seen.phase!=='reveal'){if(G.reveal&&!G.reveal.found){sfx.sad();toast('Time’s up!',1600);}}
+  if(G.phase==='reveal'&&seen.phase!=='reveal'){if(G.reveal&&!G.reveal.found&&!G.reveal.hs){sfx.sad();toast('Time’s up!',1600);buzz(60);}}
   const rid=G.phase==='reveal'&&G.reveal?G.reveal.id:null;
   if(rid!==seen.revealId)setRevealHighlight(rid);
   if(G.phase==='reveal'&&G.reveal&&!G.reveal.found&&G.reveal.id==null&&isSpy&&Spy.r===G.r&&Spy.target!=null&&!seen.spySent){seen.spySent=true;emit('wb.result',{r:G.r,reveal:true,id:Spy.target});}
   if(G.phase==='recap'&&seen.phase!=='recap'){sfx.fanfare();if(G.found)burst(new V3(P.pos.x,P.pos.y+2,P.pos.z),140);}
   if(G.phase==='reveal'&&G.reveal&&G.reveal.found&&(G.streak||0)>=2&&G.streak!==seen.streak)setTimeout(()=>toast(`🔥 ${G.streak} in a row!`,1500),1300);
   // coins: the finder gets paid for speed, everyone else who was hunting gets a small share
-  if(G.phase==='reveal'&&G.reveal&&G.reveal.found&&seen.played&&seen.paidR!==G.r){
+  if(G.phase==='reveal'&&G.reveal&&(G.reveal.found||(G.reveal.hs&&G.reveal.gp))&&seen.played&&seen.paidR!==G.r){
     seen.paidR=G.r;const mine=G.reveal.gp===myPeer();const c=mine?G.reveal.coins:TEAM_SHARE;
-    earn(c);seen.earned=(seen.earned||0)+c;
-    sys(mine?`You earned 🪙 ${c} for finding it in ${G.reveal.secs}s.`:`You earned 🪙 ${c} as your team’s share.`);
+    earn(c);seen.earned=(seen.earned||0)+c;if(!G.reveal.hs)pediaAdd(G.reveal.name);
+    if(mine&&!G.reveal.hs)buzz([30,40,60]);
+    sys(mine?(G.reveal.hs?(G.reveal.found?`You earned 🪙 ${c} for finding ${G.reveal.name}.`:`You earned 🪙 ${c} for staying hidden.`):`You earned 🪙 ${c} for finding it in ${G.reveal.secs}s.`):`You earned 🪙 ${c} as your share.`);
   }
-  if(G.phase==='clue'||G.phase==='pick')seen.played=true;else if(G.phase==='lobby'){seen.played=false;seen.earned=0;}
+  if(G.phase==='clue'||G.phase==='pick'||G.phase==='hide'||G.phase==='seek')seen.played=true;else if(G.phase==='lobby'){seen.played=false;seen.earned=0;}
   const newHints=G.phase==='clue'&&G.r===seen.r?Math.max(0,G.lines.length-seen.n):0;
   if(G.r!==seen.r)seen.spySent=false;
   Object.assign(seen,{phase:G.phase,r:G.r,n:G.lines.length,revealId:rid,streak:G.streak});
+  hideTransition(prevPhase,prevR);
+  if(G.phase==='clue'&&G.r!==prevR)buzz(15);
 
   // HUD
   $('#roomCode').textContent=myCode||'----';
-  $('#score').textContent=G.score||0;
+  $('#score').textContent=G.hs?(G.pts[me]||0):G.teams?`🔴${G.ts.r||0} 🔵${G.ts.b||0}`:(G.score||0);
+  $('#scoreLbl').textContent=G.hs?'Your points':G.teams?'Team scores':'Team score';
   $('#streakN').textContent=(G.streak||0)>=2?'🔥'+G.streak:(G.streak||'–');
   $('#clueNum').textContent=(G.phase==='lobby')?'–':(G.phase==='recap'?`${G.total}/${G.total}`:`${Math.min(G.idx+1,G.total)}/${G.total}`);
   // clue card
-  const card=$('#clue'),inPlay=G.phase==='pick'||G.phase==='clue'||G.phase==='reveal';
+  const card=$('#clue'),inPlay=G.phase==='pick'||G.phase==='clue'||G.phase==='reveal'||G.phase==='hide'||G.phase==='seek';
   card.hidden=!inPlay;if(G.r!==seen.cardR){card.classList.remove('open');seen.cardR=G.r;}
   if(inPlay){
     const ph=$('#cluePhase'),mn=$('#clueMain'),ul=$('#clueHints');ul.textContent='';
-    if(G.phase==='pick'){ph.textContent=`Clue ${G.idx+1} of ${G.total}`;mn.textContent=isSpy?'You’re the Spy! Aim at anything and click to pick it.':`${G.spyName} is picking something to spy…`;}
+    if(G.hs&&G.phase!=='reveal'){ph.textContent=`Round ${G.idx+1} of ${G.total}`;const me_=iAmHider();
+      mn.textContent=G.phase==='hide'?(me_?'You’re hiding! Pick a disguise and find a spot that matches it.':`Eyes closed… ${G.hiderName} is hiding.`)
+        :(me_?'Stay hidden! Keep still near things that look like you.':`Find ${G.hiderName}! They’re disguised as something in town. Tap them to catch them.`);}
+    else if(G.hs){ph.textContent=`Round ${G.idx+1} of ${G.total}`;const r=G.reveal||{};
+      mn.textContent=r.found?`${r.by} found ${r.name}! +${r.pts}`:r.why==='time'?`${r.name} stayed hidden! +${r.pts}`:`${r.name} left the game.`;}
+    else if(G.phase==='pick'){ph.textContent=`Clue ${G.idx+1} of ${G.total}`;mn.textContent=isSpy?'You’re the Spy! Aim at anything and click to pick it.':`${G.spyName} is picking something to spy…`;}
     else if(G.phase==='clue'){ph.textContent=G.kind==='player'?`Clue ${G.idx+1} of ${G.total}, spied by ${G.spyName}`:`Clue ${G.idx+1} of ${G.total}`;mn.textContent=G.lines[0]||'';
       G.lines.slice(1).forEach((l,i,arr)=>{const li=document.createElement('li');li.textContent=l;if(i>=arr.length-newHints)li.className='new';ul.appendChild(li);});}
     else{ph.textContent=`Clue ${G.idx+1} of ${G.total}`;const r=G.reveal||{};
-      mn.textContent=r.found?`${r.by} found it! +${r.pts}`:'Nobody found it this time.';
+      mn.textContent=r.found?`${r.by}${r.team?' '+(r.team==='r'?'🔴':'🔵'):''} found it! +${r.pts}`:'Nobody found it this time.';
       const li=document.createElement('li');li.textContent=r.name?`It was ${r.name}.`:'The Spy is revealing it…';ul.appendChild(li);
       if(r.found&&Array.isArray(r.bonus)&&r.bonus.length){const lb=document.createElement('li');lb.className='bonus';lb.textContent=r.bonus.join(' · ');ul.appendChild(lb);}
       if(r.found&&r.coins){const lc=document.createElement('li');lc.className='bonus';lc.textContent=`Found in ${r.secs}s · 🪙 +${r.coins} for ${r.by||'the finder'}, +${TEAM_SHARE} for everyone else`;ul.appendChild(lc);}}
@@ -95,8 +104,12 @@ function renderAll(){
     for(const b of $('#modeSeg').children){b.setAttribute('aria-pressed',b.dataset.mode===G.mode);b.disabled=!host;}
     for(const b of $('#totalSeg').children){b.setAttribute('aria-pressed',+b.dataset.total===G.total);b.disabled=!host;}
     for(const b of $('#diffSeg').children){b.setAttribute('aria-pressed',b.dataset.diff===G.diff);b.disabled=!host;}
-    for(const b of $('#huntSeg').children){b.setAttribute('aria-pressed',(b.dataset.hunt==='daily')===!!G.daily);b.disabled=!host;}
-    $('#freeOpts').hidden=!!G.daily;$('#dailyOpts').hidden=!G.daily;
+    const hunt=G.hs?'hide':G.daily?'daily':'free';
+    for(const b of $('#huntSeg').children){b.setAttribute('aria-pressed',b.dataset.hunt===hunt);b.disabled=!host;}
+    for(const b of $('#teamSeg').children){b.setAttribute('aria-pressed',(b.dataset.teams==='1')===G.teams);b.disabled=!host;}
+    for(const b of $('#modeSeg').children)b.disabled=!host||G.teams;
+    $('#freeOpts').hidden=hunt!=='free';$('#dailyOpts').hidden=hunt!=='daily';$('#hideOpts').hidden=hunt!=='hide';
+    $('#startBtn').disabled=G.hs&&n<2;$('#hideNeed').hidden=!(G.hs&&n<2);
     if(G.daily){dailyWatch(G.daily);renderBoard($('#dailyBoard'));}
     $('#startBtn').hidden=!host;
   }
@@ -109,11 +122,20 @@ function renderPips(){
   const lab=document.createElement('small');lab.id='roundLbl';lab.style.fontWeight='900';el.appendChild(lab);
 }
 function updateHUDTimers(){
-  const inPlay=G.phase==='pick'||G.phase==='clue'||G.phase==='reveal';
+  const inPlay=G.phase==='pick'||G.phase==='clue'||G.phase==='reveal'||G.phase==='hide'||G.phase==='seek';
+  // hide & seek: seekers see nothing but a countdown while the hider hides
+  const bl=$('#blind'),blind=frozenSeeker();bl.hidden=!blind;if(blind)$('#blindN').textContent=Math.ceil(liveLeft('roundLeft')/1000);
+  // Easy: warmer/colder, from how far you are from the answer
+  const hot=$('#hot'),showHot=G.phase==='clue'&&!!G.tp;hot.hidden=!showHot;
+  if(showHot){const d=Math.hypot(P.pos.x-G.tp[0],P.pos.z-G.tp[1]),heat=clamp(1-(d-3)/50,0,1);
+    const i=hot.querySelector('i');i.style.width=(heat*100)+'%';i.style.background=`hsl(${Math.round(200-200*heat)},85%,55%)`;
+    const w=heat>0.85?'Boiling!':heat>0.6?'Hot':heat>0.35?'Warm':'Cold';if($('#hotLbl').textContent!==w)$('#hotLbl').textContent=w;}
   $('#timeLeft').textContent=inPlay?fmtT(liveLeft('sessLeft')):'–';
   const bar=document.querySelector('#pips .bar i'),lab=$('#roundLbl');if(!bar||!lab)return;
   if(G.phase==='clue'&&G.kind==='game'&&G.lines.length<diffOf().lines){const h=liveLeft('hintIn');bar.style.width=(100*(1-h/diffOf().hint))+'%';lab.textContent=`next hint in ${Math.ceil(h/1000)}s`;}
   else if(G.phase==='clue'){const r=liveLeft('roundLeft');bar.style.width=(100*r/(G.kind==='game'?diffOf().round:PROUND_MS))+'%';lab.textContent=`${Math.ceil(r/1000)}s left`;}
+  else if(G.phase==='hide'){const r=liveLeft('roundLeft');bar.style.width=(100*r/HIDE_MS)+'%';lab.textContent=`${Math.ceil(r/1000)}s to hide`;}
+  else if(G.phase==='seek'){const r=liveLeft('roundLeft');bar.style.width=(100*r/SEEK_MS)+'%';lab.textContent=`${Math.ceil(r/1000)}s left`;}
   else if(G.phase==='pick'){const r=liveLeft('roundLeft');bar.style.width=(100*r/PICK_MS)+'%';lab.textContent=`${Math.ceil(r/1000)}s to pick`;}
   else{bar.style.width='0%';lab.textContent='';}
 }
@@ -174,6 +196,18 @@ function renderRecap(){
   if(amHost()){const again=document.createElement('button');again.className='btn';again.textContent='Play again';again.onclick=()=>{G.phase='lobby';commit();};row.appendChild(again);}
   else{const w=document.createElement('span');w.style.fontWeight='800';w.textContent=`Waiting for ${peerName(hostPeer())} to start another round.`;row.appendChild(w);}
   const lv=document.createElement('button');lv.className='btn alt';lv.textContent='Wander around';lv.onclick=()=>{wrap.hidden=true;wrap.dataset.v='x';};row.appendChild(lv);
+  if(G.teams){const r=G.ts.r||0,bl=G.ts.b||0;h.textContent=r===bl?'It’s a tie!':r>bl?'🔴 Red team wins!':'🔵 Blue team wins!';big.textContent=`🔴 ${r} · 🔵 ${bl}`;
+    p.textContent=`Together you found ${G.found} of ${G.finds.length} things.`;}
+  if(G.hs){
+    const rank=Object.entries(G.pts).sort((x,y)=>y[1]-x[1]);
+    h.textContent='Hide & seek results';big.textContent=rank.length?`${G.pnames[rank[0][0]]||'Someone'} wins!`:'';big.style.fontSize='40px';
+    p.textContent=`${G.found} of ${G.finds.length} hiders were found.`;p2.textContent=seen.earned?`🪙 You earned ${seen.earned} coins`:'';
+    const ol=document.createElement('ol');ol.className='board';
+    rank.forEach(([peer,pts],i)=>{const li=document.createElement('li');if(peer===myPeer())li.className='me';
+      const a=document.createElement('span');a.textContent=['🥇','🥈','🥉'][i]||String(i+1);const n=document.createElement('span');n.textContent=G.pnames[peer]||'Someone';const c=document.createElement('b');c.textContent=pts;
+      li.append(a,n,c);ol.appendChild(li);});
+    b.append(h,big,p,p2,ol,row);return;
+  }
   b.append(h,big,p,p2,ul);
   if(G.daily){
     const h3=document.createElement('h3');h3.textContent='Today’s board';b.appendChild(h3);
@@ -194,7 +228,8 @@ $('#modeSeg').addEventListener('click',e=>{const b=e.target.closest('button');if
 $('#totalSeg').addEventListener('click',e=>{const b=e.target.closest('button');if(!b||!amHost()||G.phase!=='lobby')return;G.total=+b.dataset.total;commit();});
 $('#diffSeg').addEventListener('click',e=>{const b=e.target.closest('button');if(!b||!amHost()||G.phase!=='lobby')return;G.diff=b.dataset.diff;commit();});
 $('#huntSeg').addEventListener('click',e=>{const b=e.target.closest('button');if(!b||!amHost()||G.phase!=='lobby')return;
-  G.daily=b.dataset.hunt==='daily'?todayKey():'';if(G.daily){G.mode='game';G.total=DAILY_N;G.diff='normal';}commit();});
+  G.hs=b.dataset.hunt==='hide';G.daily=b.dataset.hunt==='daily'?todayKey():'';if(G.daily||G.hs)G.teams=false;if(G.daily){G.mode='game';G.total=DAILY_N;G.diff='normal';}commit();});
+$('#teamSeg').addEventListener('click',e=>{const b=e.target.closest('button');if(!b||!amHost()||G.phase!=='lobby')return;G.teams=b.dataset.teams==='1';if(G.teams)G.mode='game';commit();});
 $('#startBtn').addEventListener('click',()=>{audioInit();if(amHost()&&G.phase==='lobby'){startGame();tryLock();}});
 
 /* binocular mask drawn to the real screen size */

@@ -44,7 +44,7 @@ The page uses three runtime capabilities. Declare all of them when publishing
 {
   "room": { "topics": { "wb.state": "interact", "wb.guess": "interact", "wb.result": "interact",
                         "wb.chat": "interact", "wb.ping": "interact", "wb.spyclue": "interact",
-                        "wb.spyhint": "interact" } },
+                        "wb.spyhint": "interact", "wb.tag": "interact" } },
   "db": {},
   "user": {}
 }

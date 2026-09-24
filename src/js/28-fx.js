@@ -32,7 +32,7 @@ function addPing(x,y,z,col,name){
   pings.push({g,ring,until:performance.now()+7000,x,z,el,col});
   sfx.blip();
   const dist=Math.hypot(P.pos.x-x,P.pos.z-z);
-  sys(`${name} pinged ${DPH[districtAt(x,y,z)]?DPH[districtAt(x,y,z)].replace(/^(around|along|down by|up on|over in|out on) /,'near '):'a spot'} (${Math.round(dist)}m away).`);
+  sys(`${name} pinged ${DPH[districtAt(x,y,z)]?DPH[districtAt(x,y,z)].replace(/^(around|along|down by|up on|over in|out on|out at|up in) /,'near '):'a spot'} (${Math.round(dist)}m away).`);
 }
 let redT=0;function redFlash(){redT=0.35;}
 function celebrate(o,d){

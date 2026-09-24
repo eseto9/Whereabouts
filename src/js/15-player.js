@@ -8,14 +8,15 @@ function updatePlayer(dt){
   if(!P.bean) return;
   const f=new V3(Math.sin(P.yaw),0,Math.cos(P.yaw)), r=new V3(-Math.cos(P.yaw),0,Math.sin(P.yaw));
   let fw=0,st=0;
-  if(!chatFocus){if(keys.KeyW||keys.ArrowUp)fw+=1;if(keys.KeyS||keys.ArrowDown)fw-=1;if(keys.KeyD||keys.ArrowRight)st+=1;if(keys.KeyA||keys.ArrowLeft)st-=1;fw-=joy.y;st+=joy.x;}
+  const frozen=frozenSeeker();
+  if(!chatFocus&&!frozen){if(keys.KeyW||keys.ArrowUp)fw+=1;if(keys.KeyS||keys.ArrowDown)fw-=1;if(keys.KeyD||keys.ArrowRight)st+=1;if(keys.KeyA||keys.ArrowLeft)st-=1;fw-=joy.y;st+=joy.x;}
   const dir=f.multiplyScalar(fw).add(r.multiplyScalar(st));
   const moving=dir.lengthSq()>0.01; if(moving) dir.normalize();
   const run=keys.ShiftLeft||keys.ShiftRight||Math.hypot(joy.x,joy.y)>0.95;
   const speed=P.bino?2.2:(run?10.5:6.4);
   P.vel.x=lerp(P.vel.x,dir.x*speed,damp(P.onGround?12:4,dt));
   P.vel.z=lerp(P.vel.z,dir.z*speed,damp(P.onGround?12:4,dt));
-  if(!chatFocus&&(keys.Space||P.jumpReq)&&P.onGround){P.vel.y=8.6;P.onGround=false;sfx.jump();}
+  if(!chatFocus&&!frozen&&(keys.Space||P.jumpReq)&&P.onGround){P.vel.y=8.6;P.onGround=false;sfx.jump();}
   P.jumpReq=false;
   P.vel.y-=24*dt;
   // horizontal move with walkability check per axis

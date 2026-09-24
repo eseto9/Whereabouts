@@ -94,6 +94,28 @@ kbd{font-family:var(--body);font-weight:900;background:var(--paper);color:var(--
 #coinPop.on{animation:coinUp 1.4s ease-out}
 @keyframes coinUp{0%{opacity:0;transform:translate(-50%,14px)}15%{opacity:1}100%{opacity:0;transform:translate(-50%,-6px)}}
 
+/* lobby buttons, hide & seek */
+.lobbyBtns{margin-bottom:12px}
+.lobbyBtns .btn{padding:.45em .9em}
+#lobby .need{color:var(--coral);font-weight:900;margin:-4px 0 10px}
+#disguise{position:absolute;left:50%;bottom:calc(96px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);padding:8px 12px;text-align:center;z-index:2;max-width:calc(100% - 32px)}
+#disguise b{font-family:var(--display);font-weight:400;font-size:16px}
+#disguise .chips{justify-content:center;margin:6px 0}
+#disguise .chip{font-size:20px;padding:.1em .45em}
+#disguise .chip[aria-pressed=true]{background:var(--sun)}
+#disguise small{font-weight:800;color:var(--muted);font-size:12px}
+#blind{position:absolute;inset:0;background:rgba(20,14,38,.94);display:flex;align-items:center;justify-content:center;z-index:3;color:#fff;text-align:center}
+#blind .bigN{font-family:var(--display);font-size:88px;line-height:1}
+#blind p{font-weight:900;font-size:18px;margin:8px 16px 0}
+.touch #disguise{bottom:calc(66px + env(safe-area-inset-bottom,0px))}
+.touch #disguise small{display:none}
+/* Easy mode's warmer/colder meter */
+#hot{display:flex;gap:6px;align-items:center;justify-content:center;margin-top:6px;font-weight:900;font-size:13px}
+.hotbar{width:140px;height:10px;border:2px solid var(--ink);border-radius:6px;overflow:hidden;background:rgba(0,0,0,.06)}
+.hotbar i{display:block;height:100%;width:0;transition:width .3s,background .3s}
+#hotLbl{min-width:4.5em;text-align:left}
+.touch #hot{margin-top:3px;font-size:11px}
+.touch .hotbar{width:90px;height:7px}
 /* ---------- streaks, boards ---------- */
 #clue li.bonus{color:var(--muted);font-size:14px}
 #recap .sub{font-weight:800;color:var(--muted);margin:4px 0 0}
