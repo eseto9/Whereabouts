@@ -68,7 +68,7 @@ function renderAll(){
   $('#clueNum').textContent=(G.phase==='lobby')?'–':(G.phase==='recap'?`${G.total}/${G.total}`:`${Math.min(G.idx+1,G.total)}/${G.total}`);
   // clue card
   const card=$('#clue'),inPlay=G.phase==='pick'||G.phase==='clue'||G.phase==='reveal';
-  card.hidden=!inPlay;
+  card.hidden=!inPlay;if(G.r!==seen.cardR){card.classList.remove('open');seen.cardR=G.r;}
   if(inPlay){
     const ph=$('#cluePhase'),mn=$('#clueMain'),ul=$('#clueHints');ul.textContent='';
     if(G.phase==='pick'){ph.textContent=`Clue ${G.idx+1} of ${G.total}`;mn.textContent=isSpy?'You’re the Spy! Aim at anything and click to pick it.':`${G.spyName} is picking something to spy…`;}
@@ -80,6 +80,11 @@ function renderAll(){
       if(r.found&&Array.isArray(r.bonus)&&r.bonus.length){const lb=document.createElement('li');lb.className='bonus';lb.textContent=r.bonus.join(' · ');ul.appendChild(lb);}
       if(r.found&&r.coins){const lc=document.createElement('li');lc.className='bonus';lc.textContent=`Found in ${r.secs}s · 🪙 +${r.coins} for ${r.by||'the finder'}, +${TEAM_SHARE} for everyone else`;ul.appendChild(lc);}}
     renderPips();
+    // phones show the clue and the newest hint; the rest are a tap away
+    card.dataset.phase=G.phase;
+    const hidden=touchMode&&!card.classList.contains('open')?Math.max(0,ul.children.length-1):0;
+    const more=$('#clueMore');more.hidden=!touchMode||ul.children.length<2;
+    more.textContent=hidden?`▾ ${hidden} more ${G.phase==='clue'?(hidden>1?'hints':'hint'):'details'}`:'▴ Show less';
   }
   // lobby
   const lob=$('#lobby');lob.hidden=G.phase!=='lobby';

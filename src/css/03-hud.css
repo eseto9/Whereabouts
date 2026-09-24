@@ -130,6 +130,24 @@ kbd{font-family:var(--body);font-weight:900;background:var(--paper);color:var(--
   .touch #clue{bottom:calc(306px + env(safe-area-inset-bottom,0px))}
   .touch #lobby{bottom:calc(306px + env(safe-area-inset-bottom,0px));max-height:calc(100% - 500px);min-height:130px}
 }
+/* phones: fewer things on screen. Outfit, sound, coins and the compass live off the play screen,
+   and the clue card shows the clue plus its newest line until you open it */
+.touch #tools,.touch #compass{display:none}
+#clueMore{display:block;margin:4px auto 0;border:0;background:none;color:var(--muted);font:inherit;font-weight:900;font-size:13px;padding:2px 8px}
+.touch #clue:not(.open)[data-phase=clue] #clueHints li:not(:last-child){display:none}
+.touch #clue:not(.open)[data-phase=reveal] #clueHints li:not(:first-child){display:none}
+.touch #clue{padding:8px 12px 8px}
+.touch #clue .phase{font-size:11px;margin-bottom:2px}
+.touch #clue .main{font-size:18px}
+.touch #clue ul{font-size:14px;margin-top:4px}
+.touch .pips{margin-top:6px}
+.touch #clue.open{max-height:60vh;overflow:auto}
+@media (max-width:980px){
+  .touch #clue{top:calc(84px + env(safe-area-inset-top,0px));bottom:auto}
+  .touch #lobby{top:calc(84px + env(safe-area-inset-top,0px));bottom:auto;max-height:calc(100% - 414px);min-height:0}
+  .touch #clue.open{max-height:calc(100% - 414px)}
+  .touch #tip{top:auto;bottom:calc(326px + env(safe-area-inset-bottom,0px))}
+}
 /* phones held sideways: clue top-left, tools and chat top-right, scores along the bottom */
 @media (max-height:520px) and (orientation:landscape){
   .touch #compass{display:none}
@@ -138,7 +156,7 @@ kbd{font-family:var(--body);font-weight:900;background:var(--paper);color:var(--
   .touch #clue .main{font-size:18px}
   .touch #clue ul{font-size:14px}
   .touch #lobby{top:calc(8px + env(safe-area-inset-top,0px));bottom:auto;left:calc(16px + env(safe-area-inset-left,0px));max-height:calc(100% - 180px);min-height:0}
-  .touch #chat{top:calc(52px + env(safe-area-inset-top,0px));bottom:auto;left:auto;right:calc(16px + env(safe-area-inset-right,0px));width:min(270px,36%)}
+  .touch #chat{top:calc(8px + env(safe-area-inset-top,0px));bottom:auto;left:auto;right:calc(16px + env(safe-area-inset-right,0px));width:min(270px,36%)}
   .touch #chatLog{max-height:62px}
   .touch #stats{top:auto;bottom:calc(8px + env(safe-area-inset-bottom,0px));left:50%;transform:translateX(-50%);padding:4px 10px;gap:10px}
   .touch .stat b{font-size:18px}

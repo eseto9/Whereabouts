@@ -37,3 +37,4 @@ $('#tbtns').addEventListener('click',e=>{
 });
 $('#emoteRow').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;emote(b.dataset.em);$('#emoteRow').hidden=true;});
 $('#chatInput').addEventListener('blur',()=>$('#chat').classList.remove('open'));
+$('#clueMore').addEventListener('click',()=>{$('#clue').classList.toggle('open');renderAll();});

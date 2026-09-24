@@ -17,13 +17,28 @@ const withDevBits = (html, { mock }) => html
   .replace('<script src="https://cdn.jsdelivr.net', (mock ? DEV_MOCKS : '') + '<script src="https://cdn.jsdelivr.net')
   .replace('</body>', RELOAD + '</body>');
 
+// Live reload, only when some file's contents really changed: OneDrive and friends touch
+// files while syncing, and a plain fs.watch would reload the page over and over.
 const clients = new Set();
-let reloadTimer = null;
-fs.watch(SRC, { recursive: true }, () => {
+const DEV = path.join(ROOT, 'dev');
+function snapshot() {
+  const out = [];
+  const walk = d => { for (const e of fs.readdirSync(d, { withFileTypes: true })) { const f = path.join(d, e.name); if (e.isDirectory()) walk(f); else { try { out.push(f + '\0' + fs.readFileSync(f, 'utf8')); } catch (err) {} } } };
+  walk(SRC); walk(DEV);
+  return out.join('\0\0');
+}
+let lastSnap = snapshot(), reloadTimer = null;
+const onChange = () => {
   clearTimeout(reloadTimer);
-  reloadTimer = setTimeout(() => { for (const res of clients) res.write('data: reload\n\n'); }, 80);
-});
-fs.watch(path.join(ROOT, 'dev'), () => { for (const res of clients) res.write('data: reload\n\n'); });
+  reloadTimer = setTimeout(() => {
+    const snap = snapshot();
+    if (snap === lastSnap) return;
+    lastSnap = snap;
+    for (const res of clients) res.write('data: reload\n\n');
+  }, 150);
+};
+fs.watch(SRC, { recursive: true }, onChange);
+fs.watch(DEV, onChange);
 
 function send(res, status, type, body) {
   res.writeHead(status, { 'Content-Type': type + '; charset=utf-8', 'Cache-Control': 'no-store' });
