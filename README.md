@@ -4,7 +4,7 @@
 src/index.html       page template (markup; <!-- @styles --> and <!-- @app --> markers)
 src/css/NN-*.css     styles, concatenated in filename order
 src/js/NN-*.js       game code, concatenated in filename order inside one IIFE
-tools/build.mjs      → dist/whereabouts.html, the single file to publish
+tools/build.mjs      → dist/whereabouts.html (the Claude artifact) and docs/index.html (GitHub Pages)
 tools/dev-server.mjs local test server (live reload, source maps)
 dev/mock-*.js        stand-ins for the artifact runtime: claude.use(), room, db and user
 ```
@@ -15,7 +15,7 @@ number that puts it after the things it uses at load time.
 
 ```
 npm run dev     # http://localhost:5178
-npm run build   # dist/whereabouts.html
+npm run build   # dist/whereabouts.html + docs/index.html
 ```
 
 Test URLs (combine with `&`):
@@ -58,3 +58,9 @@ The page uses three runtime capabilities. Declare all of them when publishing
 - `user` gives each player an id, which keys their wallet and their team's daily score.
 
 Without `db` or `user` the game still plays; those features just switch off.
+
+## GitHub Pages
+
+`docs/index.html` is the same page, served at https://eseto9.github.io/Whereabouts/ when
+Pages is set to deploy from the `main` branch, `/docs` folder. There is no Claude runtime
+there, so it plays single-player: no rooms, no daily board, coins saved in that browser only.
