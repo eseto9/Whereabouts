@@ -562,10 +562,13 @@ button.code:hover{filter:brightness(1.06)}
         <button data-mode="player">Players</button>
       </div>
       </div>
+      <div id="totalOpts">
       <div class="lbl">Clues per game</div>
       <div class="seg" id="totalSeg">
-        <button data-total="6">6</button><button data-total="8">8</button><button data-total="10">10</button>
+        <button data-total="5">5</button><button data-total="7">7</button><button data-total="10">10</button>
       </div>
+      </div>
+      <p class="need" id="teamGoal" hidden>🏁 First team to find 5 things wins!</p>
       <div class="lbl">Difficulty</div>
       <div class="seg" id="diffSeg">
         <button data-diff="easy">Easy <small>½ pts</small></button><button data-diff="normal">Normal</button><button data-diff="hard">Hard <small>2× pts</small></button>
@@ -3943,12 +3946,12 @@ async function dailySubmit(key,score,found,names,secs){
    ========================================================= */
 // everything not listed here is part of the free starter wardrobe
 const PRICES={
-  'top:sweater':60,'top:raincoat':120,'top:puffer':150,'top:hawaii':180,'top:varsity':220,'top:tux':300,'top:cape':400,'top:space':450,'top:armor':550,'top:dino':700,
-  'bot:skirt':60,'bot:overalls':120,'bot:tutu':180,'bot:hula':200,
-  'shoe:boots':90,'shoe:flippers':140,'shoe:cowboy':160,'shoe:bunny':220,'shoe:rollers':260,'shoe:glow':300,'shoe:rocket':650,
-  'pat:dots':50,'pat:checks':70,'pat:stars':150,'pat:rainbow':320,
-  'x:scarf':40,'x:bowtie':60,'x:shades':70,'x:glasses':80,'x:backpack':100,'x:floatie':150,'x:balloon':180,'x:guitar':250,'x:wings':350,'x:jetpack':500,'x:medal':600,'x:buddy':800,
-  'ride:carpet':250,'ride:cloud':400,'ride:rocket':600,'ride:ufo':900,
+  'top:sweater':50,'top:raincoat':100,'top:puffer':120,'top:hawaii':150,'top:varsity':180,'top:tux':240,'top:cape':320,'top:space':360,'top:armor':440,'top:dino':560,
+  'bot:skirt':50,'bot:overalls':100,'bot:tutu':150,'bot:hula':160,
+  'shoe:boots':70,'shoe:flippers':110,'shoe:cowboy':130,'shoe:bunny':180,'shoe:rollers':210,'shoe:glow':240,'shoe:rocket':520,
+  'pat:dots':40,'pat:checks':60,'pat:stars':120,'pat:rainbow':260,
+  'x:scarf':30,'x:bowtie':50,'x:shades':60,'x:glasses':60,'x:backpack':80,'x:floatie':120,'x:balloon':150,'x:guitar':200,'x:wings':280,'x:jetpack':400,'x:medal':480,'x:buddy':640,
+  'ride:carpet':200,'ride:cloud':320,'ride:rocket':480,'ride:ufo':720,
 };
 // earned, not bought: each one unlocks when you reach its goal
 const UNLOCKS={
@@ -3972,7 +3975,7 @@ try{const s=JSON.parse(localStorage.getItem('wb.wallet')||'{}');
   Wallet.coins=Math.max(0,Math.floor(+s.coins||0));Wallet.owned=Array.isArray(s.owned)?s.owned.filter(isPaid):[];Wallet.stats=cleanStats(s.stats);
   Wallet.found=Array.isArray(s.found)?s.found.filter(n=>typeof n==='string').slice(0,500):[];Wallet.at=+s.at||0;}catch(e){}
 const isOwned=k=>!isPaid(k)||Wallet.owned.includes(k);
-const tierOf=k=>{if(UNLOCKS[k])return 'earn';const p=PRICES[k]||0;return p>=300?'legend':p>=150?'fancy':p?'nice':'basic';};
+const tierOf=k=>{if(UNLOCKS[k])return 'earn';const p=PRICES[k]||0;return p>=240?'legend':p>=120?'fancy':p?'nice':'basic';};
 const TIER_NAMES={basic:'Starter',nice:'Nice',fancy:'Fancy',legend:'Legendary',earn:'Earned'};
 /* ---------- progress, and the earned items it unlocks ---------- */
 function statOf(goal){const s=Wallet.stats;if(goal==='days')return s.days.length;if(goal==='finds')return Math.max(s.finds,lbMe().finds);return s[goal]||0;}
@@ -3987,8 +3990,8 @@ function checkUnlocks(){
 }
 function itemInfo(k){const [slot,id]=k.split(':');const it=(SLOT_LISTS[slot]||[]).find(o=>o[0]===id)||[id,id,''];return {slot,id,name:it[1],emoji:it[2]||''};}
 function itemName(k){const i=itemInfo(k);return i.slot==='pat'?`${i.name} pattern`:i.name;}
-// 10 coins for a find, plus up to 25 more for speed (all of it within 5 s, none after a minute)
-function coinsFor(ms,mult){return Math.round((10+25*clamp((60000-ms)/55000,0,1))*(mult||1));}
+// coins for a find: a third of its points (so faster finds, fewer hints and harder games pay more)
+function coinsFor(pts){return Math.ceil(Math.max(0,pts)/3);}
 // the outfit with k put on (a pattern goes on the top)
 function withItem(f,k){
   const {slot,id}=itemInfo(k);f=Object.assign({},f);
@@ -4063,7 +4066,16 @@ const DIFF={
   hard:{label:'Hard',hint:28000,round:90000,mult:2,start:1,lines:3},
 };
 const diffOf=()=>DIFF[G.diff]||DIFF.normal;
-function freshState(){return {teams:false,tm:{},ts:{r:0,b:0},hs:false,hider:null,hiderName:'',pts:{},pnames:{},tp:null,phase:'lobby',mode:'game',hot:false,total:8,diff:'normal',daily:'',idx:0,score:0,found:0,streak:0,best:0,sessLeft:0,roundLeft:0,hintIn:0,lines:[],kind:'game',spy:null,spyName:'',mv:false,finds:[],reveal:null,dailyMsg:'',r:0,v:0,hostPeer:null};}
+// points: a clue is worth 100 when it appears, 1 less every second, 15 less for every extra hint,
+// never under 10; then Easy halves it and Hard doubles it. A wrong guess costs the team 10 (×difficulty).
+const PTS={base:100,perSec:1,hint:15,min:10,wrong:10};
+const clueMult=()=>G.kind==='game'&&!G.daily?diffOf().mult:1;
+const clueHints=()=>Math.max(0,G.lines.length-(G.kind==='game'?(G.daily?DIFF.normal:diffOf()).start:1));
+function clueWorth(secs,hints,mult){return Math.round(Math.max(PTS.min,PTS.base-PTS.perSec*Math.floor(secs)-PTS.hint*hints)*mult);}
+// Red vs Blue: the first team to find this many wins (or whoever has most when the clues run out)
+const TEAM_GOAL=5,TEAM_MAX=15;
+const teamWon=()=>G.teams&&((G.tf.r||0)>=TEAM_GOAL||(G.tf.b||0)>=TEAM_GOAL);
+function freshState(){return {teams:false,tm:{},ts:{r:0,b:0},hs:false,hider:null,hiderName:'',pts:{},pnames:{},tp:null,phase:'lobby',mode:'game',hot:false,total:7,tf:{r:0,b:0},diff:'normal',daily:'',idx:0,score:0,found:0,streak:0,best:0,sessLeft:0,roundLeft:0,hintIn:0,lines:[],kind:'game',spy:null,spyName:'',mv:false,finds:[],reveal:null,dailyMsg:'',r:0,v:0,hostPeer:null};}
 let G=freshState();G._recv=Date.now();
 const H={target:null,obj:null,ladder:null,fmtLast:null,used:new Set(),plan:null,wrong:false,sessEnd:0,roundEnd:0,nextHintAt:0,pickEnd:0,revealEnd:0,clueStart:0,spyRot:0,lastSync:0,lastTick:0,findIdx:-1};
 const Spy={target:null,r:-1};
@@ -4077,6 +4089,8 @@ const liveLeft=f=>Math.max(0,(G[f]||0)-(Date.now()-(G._recv||Date.now())));
 function commit(){
   const now=Date.now();
   G.hostPeer=myPeer();G.v=(G.v||0)+1;
+  // clue counts from before (6 or 8, or a finished Red vs Blue or daily game) go back to a normal choice
+  if(G.phase==='lobby'&&!G.daily&&!G.teams&&!G.hs&&![5,7,10].includes(G.total))G.total=7;
   const inPlay=G.phase!=='lobby'&&G.phase!=='recap';
   if(G.teams&&G.phase!=='recap')assignTeams();
   G.sessLeft=inPlay?Math.max(0,H.sessEnd-now):0;
@@ -4099,12 +4113,12 @@ function adoptState(s,recv){
   G.daily=typeof G.daily==='string'&&/^\d{4}-\d\d-\d\d$/.test(G.daily)?G.daily:'';
   G.dailyMsg=clean(G.dailyMsg,80);G.dsecs=clamp(Math.round(+G.dsecs||0),0,36000);
   const peerMap=(o,ok)=>o&&typeof o==='object'&&!Array.isArray(o)?Object.fromEntries(Object.entries(o).slice(0,32).filter(([k,v])=>typeof k==='string'&&ok(v))):{};
-  G.teams=!!G.teams;G.tm=peerMap(G.tm,v=>v==='r'||v==='b');G.ts={r:Math.max(0,+(G.ts&&G.ts.r)||0),b:Math.max(0,+(G.ts&&G.ts.b)||0)};
+  G.teams=!!G.teams;G.tm=peerMap(G.tm,v=>v==='r'||v==='b');G.ts={r:Math.max(0,+(G.ts&&G.ts.r)||0),b:Math.max(0,+(G.ts&&G.ts.b)||0)};G.tf={r:clamp(Math.floor(+(G.tf&&G.tf.r)||0),0,99),b:clamp(Math.floor(+(G.tf&&G.tf.b)||0),0,99)};
   G.hs=!!G.hs;G.hider=typeof G.hider==='string'?G.hider:null;G.hiderName=clean(G.hiderName);
   G.pts=peerMap(G.pts,v=>Number.isFinite(v));G.pnames=Object.fromEntries(Object.entries(peerMap(G.pnames,v=>typeof v==='string')).map(([k,v])=>[k,clean(v)]));
   if(G.reveal&&typeof G.reveal==='object'){const R=G.reveal;
     R.bonus=Array.isArray(R.bonus)?R.bonus.slice(0,4).map(x=>clean(x,40)):[];
-    R.gp=clean(R.gp,40);R.team=R.team==='r'||R.team==='b'?R.team:'';R.hs=!!R.hs;R.why=clean(R.why,8);R.secs=clamp(Math.round(+R.secs||0),0,600);R.coins=clamp(Math.round(+R.coins||0),0,60);}
+    R.gp=clean(R.gp,40);R.team=R.team==='r'||R.team==='b'?R.team:'';R.hs=!!R.hs;R.why=clean(R.why,8);R.secs=clamp(Math.round(+R.secs||0),0,600);R.coins=clamp(Math.round(+R.coins||0),0,100);R.wrong=clamp(Math.round(+R.wrong||0),0,99);}
   renderAll();
 }
 function hostTick(){
@@ -4147,7 +4161,7 @@ function startGame(){
   H.used=new Set();H.spyRot=Math.floor(Math.random()*6);
   if(G.hs){startHideSeek();return;}
   if(G.daily){G.mode='game';G.total=DAILY_N;G.diff='normal';G.teams=false;H.plan=dailyPlan(G.daily);}else H.plan=null;
-  if(G.teams){G.mode='game';G.ts={r:0,b:0};assignTeams();}   // keeps the teams picked in the lobby
+  if(G.teams){G.mode='game';G.ts={r:0,b:0};G.tf={r:0,b:0};G.total=TEAM_MAX;assignTeams();}   // keeps the teams picked in the lobby
   G.hot=G.diff==='easy'&&!G.daily;   // the hot/cold meter starts on for Easy; the host can switch it any time
   G.score=0;G.found=0;G.streak=0;G.best=0;G.finds=[];G.dailyMsg='';G.idx=-1;G.dsecs=0;H.gameStart=Date.now();
   H.sessEnd=Date.now()+G.total*SESSION_PER;
@@ -4155,7 +4169,7 @@ function startGame(){
 }
 function nextClue(){
   const now=Date.now();G.idx++;
-  if(G.idx>=G.total||now>=H.sessEnd){endGame();return;}
+  if(G.idx>=G.total||now>=H.sessEnd||teamWon()){endGame();return;}
   const n=players().length;let kind='game';
   if(!G.daily&&!G.teams){
     if(G.mode==='player'&&n>=2)kind='player';
@@ -4175,7 +4189,7 @@ function startGameClue(){
     const recent=new Set(recentAnswers()),fresh=pool.filter(o=>!recent.has(o.n));if(fresh.length>=3)pool=fresh;
     o=pick(pool);ladder=makeLadder(o,H.fmtLast,G.diff==='easy'?EASY_FMTS:G.diff==='hard'?HARD_FMTS:null);
   }
-  H.used.add(o.id);H.target=o.id;H.obj=o;H.ladder=ladder;H.fmtLast=ladder.fmt;H.wrong=false;rememberAnswer(o.n);
+  H.used.add(o.id);H.target=o.id;H.obj=o;H.ladder=ladder;H.fmtLast=ladder.fmt;H.wrong=false;H.wrongN=0;rememberAnswer(o.n);
   // the warmer/colder meter: on from the start on Easy, and for anyone still stuck after a while otherwise
   {const c=objCenter(o);G.tp=[Math.round(c.x*10)/10,Math.round(c.z*10)/10];}
   const lines=[ladder.l1];if(D.start>1)lines.push(ladder.l2);
@@ -4186,7 +4200,7 @@ function startGameClue(){
 function startPick(){
   const now=Date.now();const ps=sortedPlayers();const sp=ps[H.spyRot++%ps.length];
   Object.assign(G,{tp:null,kind:'player',spy:sp.peer,spyName:clean(sp.presence.name)||'Someone',lines:[],mv:false,phase:'pick',reveal:null});G.r++;
-  H.target=null;H.obj=null;H.wrong=false;H.pickEnd=now+PICK_MS;
+  H.target=null;H.obj=null;H.wrong=false;H.wrongN=0;H.pickEnd=now+PICK_MS;
   commit();
 }
 function revealUnsolved(){
@@ -4210,20 +4224,21 @@ function applyResultAsHost(d,now){
   if(G.phase!=='clue')return;
   const o=W.list[d.id];
   if(d.ok){
-    const game=G.kind==='game',D=game?diffOf():DIFF.normal;
-    const hintsUsed=Math.max(0,G.lines.length-(game?D.start:1));
-    const base=game?Math.max(20,100-20*hintsUsed)+(o.mv?25:0):Math.max(20,100-15*hintsUsed);
-    let pts=Math.round(base*D.mult/5)*5;const bonus=[];
-    // bonuses grow with the difficulty too: Easy pays half, Hard pays double
-    if(now-H.clueStart<15000){const q=Math.round(20*D.mult);pts+=q;bonus.push(`⚡ Quick +${q}`);}
-    if(!H.wrong){const q=Math.round(10*D.mult);pts+=q;bonus.push(`✨ No wrong guesses +${q}`);}
+    const ms=now-H.clueStart,hintsUsed=clueHints(),mult=clueMult();
+    const pts=clueWorth(ms/1000,hintsUsed,mult),bonus=[];
+    if(hintsUsed)bonus.push(`💡 ${hintsUsed} hint${hintsUsed>1?'s':''} −${PTS.hint*hintsUsed*mult}`);
+    if(H.wrongN)bonus.push(`❌ ${H.wrongN} wrong −${PTS.wrong*H.wrongN*mult}`);
     G.score+=pts;G.found++;
-    const team=G.teams?G.tm[d.gp]:null;if(team)G.ts[team]=(G.ts[team]||0)+pts;
-    const ms=now-H.clueStart;
+    const team=G.teams?G.tm[d.gp]:null;if(team){G.ts[team]=(G.ts[team]||0)+pts;G.tf[team]=(G.tf[team]||0)+1;}
     G.finds.push({c:(G.lines[0]||'').slice(0,110),n:o.n,by:clean(d.gn),p:pts,s:Math.round(ms/1000)});
-    G.phase='reveal';G.reveal={found:true,id:d.id,name:o.n,by:clean(d.gn),pts,bonus,team:team||'',gp:String(d.gp||''),secs:Math.round(ms/1000),coins:coinsFor(ms,D.mult)};
+    G.phase='reveal';G.reveal={found:true,id:d.id,name:o.n,by:clean(d.gn),pts,bonus,team:team||'',gp:String(d.gp||''),secs:Math.round(ms/1000),coins:coinsFor(pts)};
     H.revealEnd=now+REVEAL_MS;commit();
-  }else{H.sessEnd-=5000;H.wrong=true;commit();}
+  }else{
+    // a wrong guess costs the guesser's team points straight away
+    const pen=PTS.wrong*clueMult(),team=G.teams?G.tm[d.gp]:null;
+    G.score=Math.max(0,G.score-pen);if(team)G.ts[team]=Math.max(0,(G.ts[team]||0)-pen);
+    H.wrong=true;H.wrongN=(H.wrongN||0)+1;commit();
+  }
 }
 
 /* ---------- message handling ---------- */
@@ -4257,7 +4272,7 @@ function onMsg(topic,m){
         if(!celebrated.has(G.r)){celebrated.add(G.r);celebrate(o,d);}
         if(amHost())applyResultAsHost(d,now);
       }else{
-        if(d.gp===myPeer()){sfx.thud();buzz(120);flashOutline(o,RED,0.8);toast(`Not the ${o.n.replace(/^(the|a|an) /,'')}\n−5 seconds`);redFlash();}
+        if(d.gp===myPeer()){sfx.thud();buzz(120);flashOutline(o,RED,0.8);toast(`Not the ${o.n.replace(/^(the|a|an) /,'')}\n−${PTS.wrong*clueMult()} points`);redFlash();}
         else sys(`${clean(d.gn)} tried ${o.n}. Nope!`);
         if(amHost())applyResultAsHost(d,now);
       }
@@ -4275,7 +4290,7 @@ function onMsg(topic,m){
     case 'wb.spyclue':{
       if(!amHost()||m.peer!==G.spy||G.phase!=='pick'||d.r!==G.r)return;
       const txt=clean(d.t,120);if(!txt)return;
-      G.lines=[txt];G.mv=!!d.mv;G.phase='clue';H.wrong=false;H.roundEnd=now+PROUND_MS;H.clueStart=now;commit();break;
+      G.lines=[txt];G.mv=!!d.mv;G.phase='clue';H.wrong=false;H.wrongN=0;H.roundEnd=now+PROUND_MS;H.clueStart=now;commit();break;
     }
     case 'wb.tag':{onTag(m,d);break;}
     case 'wb.spyhint':{
@@ -4896,9 +4911,10 @@ function renderAll(){
 
   // HUD
   $('#roomCode').textContent=myCode||'----';
-  $('#score').textContent=G.hs?(G.pts[me]||0):G.teams?`🔴${G.ts.r||0} 🔵${G.ts.b||0}`:(G.score||0);
-  $('#scoreLbl').textContent=G.hs?'Yours':G.teams?'Teams':'Score';
-  $('#clueNum').textContent=(G.phase==='lobby')?'–':(G.phase==='recap'?`${G.total}/${G.total}`:`${Math.min(G.idx+1,G.total)}/${G.total}`);
+  $('#score').textContent=G.hs?(G.pts[me]||0):G.teams?`🔴${G.tf.r||0} 🔵${G.tf.b||0}`:(G.score||0);
+  $('#scoreLbl').textContent=G.hs?'Yours':G.teams?`First to ${TEAM_GOAL}`:'Score';
+  $('#clueNum').textContent=(G.phase==='lobby')?'–':G.teams?String(Math.min(G.idx+1,G.total)):(G.phase==='recap'?`${G.total}/${G.total}`:`${Math.min(G.idx+1,G.total)}/${G.total}`);
+  const clueOf=()=>G.teams?`Clue ${G.idx+1} · first to ${TEAM_GOAL} finds wins`:`Clue ${G.idx+1} of ${G.total}`;
   // clue card
   const card=$('#clue'),inPlay=G.phase==='pick'||G.phase==='clue'||G.phase==='reveal'||G.phase==='hide'||G.phase==='seek';
   card.hidden=false;card.classList.toggle('noclue',!inPlay);if(G.r!==seen.cardR){card.classList.remove('open','min');seen.cardR=G.r;}
@@ -4910,10 +4926,10 @@ function renderAll(){
         :(me_?'Stay hidden! Keep still near things that look like you.':`Find ${G.hiderName}! They’re disguised as something in town. Tap them to catch them.`);}
     else if(G.hs){ph.textContent=`Round ${G.idx+1} of ${G.total}`;const r=G.reveal||{};
       mn.textContent=r.found?`${r.by} found ${r.name}! +${r.pts}`:r.why==='time'?`${r.name} stayed hidden! +${r.pts}`:`${r.name} left the game.`;}
-    else if(G.phase==='pick'){ph.textContent=`Clue ${G.idx+1} of ${G.total}`;mn.textContent=isSpy?'You’re the Spy! Aim at anything and click to pick it.':`${G.spyName} is picking something to spy…`;}
-    else if(G.phase==='clue'){ph.textContent=G.kind==='player'?`Clue ${G.idx+1} of ${G.total}, spied by ${G.spyName}`:`Clue ${G.idx+1} of ${G.total}`;mn.textContent=G.lines[0]||'';
+    else if(G.phase==='pick'){ph.textContent=clueOf();mn.textContent=isSpy?'You’re the Spy! Aim at anything and click to pick it.':`${G.spyName} is picking something to spy…`;}
+    else if(G.phase==='clue'){ph.textContent=G.kind==='player'?`${clueOf()}, spied by ${G.spyName}`:clueOf();mn.textContent=G.lines[0]||'';
       G.lines.slice(1).forEach((l,i,arr)=>{const li=document.createElement('li');li.textContent=l;if(i>=arr.length-newHints)li.className='new';ul.appendChild(li);});}
-    else{ph.textContent=`Clue ${G.idx+1} of ${G.total}`;const r=G.reveal||{};
+    else{ph.textContent=clueOf();const r=G.reveal||{};
       mn.textContent=r.found?`${r.by}${r.team?' '+(r.team==='r'?'🔴':'🔵'):''} found it! +${r.pts}`:'Nobody found it this time.';
       const li=document.createElement('li');li.textContent=r.name?`It was ${r.name}.`:'The Spy is revealing it…';ul.appendChild(li);
       if(r.found&&Array.isArray(r.bonus)&&r.bonus.length){const lb=document.createElement('li');lb.className='bonus';lb.textContent=r.bonus.join(' · ');ul.appendChild(lb);}
@@ -4937,7 +4953,7 @@ function renderAll(){
     for(const b of $('#huntSeg').children){b.setAttribute('aria-pressed',b.dataset.hunt===hunt);b.disabled=!host;}
     for(const b of $('#teamSeg').children){b.setAttribute('aria-pressed',(b.dataset.teams==='1')===G.teams);b.disabled=!host;}
     for(const b of $('#modeSeg').children)b.disabled=!host||G.teams;
-    $('#modeOpts').hidden=G.teams;renderTeams(host);
+    $('#modeOpts').hidden=G.teams;$('#totalOpts').hidden=G.teams;$('#teamGoal').hidden=!G.teams;renderTeams(host);
     $('#freeOpts').hidden=hunt!=='free';$('#dailyOpts').hidden=hunt!=='daily';$('#hideOpts').hidden=hunt!=='hide';
     $('#startBtn').disabled=G.hs&&n<2;$('#hideNeed').hidden=!(G.hs&&n<2);
     if(G.daily){dailyWatchAny(G.daily);renderBoard($('#dailyBoard'));}
@@ -4996,8 +5012,10 @@ function updateHUDTimers(){
     const w=heat>0.85?'Boiling!':heat>0.6?'Hot':heat>0.35?'Warm':'Cold';if($('#hotLbl').textContent!==w)$('#hotLbl').textContent=w;}
   $('#timeLeft').textContent=inPlay?fmtT(liveLeft('sessLeft')):'–';
   const bar=document.querySelector('#pips .bar i'),lab=$('#roundLbl');if(!bar||!lab)return;
-  if(G.phase==='clue'&&G.kind==='game'&&G.lines.length<diffOf().lines){const h=liveLeft('hintIn');bar.style.width=(100*(1-h/diffOf().hint))+'%';lab.textContent=`next hint in ${Math.ceil(h/1000)}s`;}
-  else if(G.phase==='clue'){const r=liveLeft('roundLeft');bar.style.width=(100*r/(G.kind==='game'?diffOf().round:PROUND_MS))+'%';lab.textContent=`${Math.ceil(r/1000)}s left`;}
+  // what the clue is worth right now: it ticks down every second, and drops with each hint
+  const worth=G.phase==='clue'?`Worth ${clueWorth(((G.kind==='game'?(G.daily?DIFF.normal:diffOf()).round:PROUND_MS)-liveLeft('roundLeft'))/1000,clueHints(),clueMult())} · `:'';
+  if(G.phase==='clue'&&G.kind==='game'&&G.lines.length<diffOf().lines){const h=liveLeft('hintIn');bar.style.width=(100*(1-h/diffOf().hint))+'%';lab.textContent=`${worth}next hint in ${Math.ceil(h/1000)}s`;}
+  else if(G.phase==='clue'){const r=liveLeft('roundLeft');bar.style.width=(100*r/(G.kind==='game'?diffOf().round:PROUND_MS))+'%';lab.textContent=`${worth}${Math.ceil(r/1000)}s left`;}
   else if(G.phase==='hide'){const r=liveLeft('roundLeft');bar.style.width=(100*r/HIDE_MS)+'%';lab.textContent=`${Math.ceil(r/1000)}s to hide`;}
   else if(G.phase==='seek'){const r=liveLeft('roundLeft');bar.style.width=(100*r/SEEK_MS)+'%';lab.textContent=`${Math.ceil(r/1000)}s left`;}
   else if(G.phase==='pick'){const r=liveLeft('roundLeft');bar.style.width=(100*r/PICK_MS)+'%';lab.textContent=`${Math.ceil(r/1000)}s to pick`;}
@@ -5062,8 +5080,11 @@ function renderRecap(){
   else{const w=document.createElement('span');w.style.fontWeight='800';w.textContent=`Waiting for ${peerName(hostPeer())} to start another round.`;row.appendChild(w);}
   if(Net.room){const inv=document.createElement('button');inv.className='btn alt';inv.textContent='📨 Invite';inv.onclick=()=>$('#inviteBtn').click();row.appendChild(inv);}
   const lv=document.createElement('button');lv.className='btn alt';lv.textContent='Wander around';lv.onclick=()=>{wrap.hidden=true;seen.recapGone=true;renderExit();};row.appendChild(lv);
-  if(G.teams){const r=G.ts.r||0,bl=G.ts.b||0;h.textContent=r===bl?'It’s a tie!':r>bl?'🔴 Red team wins!':'🔵 Blue team wins!';big.textContent=`🔴 ${r} · 🔵 ${bl}`;
-    p.textContent=`Together you found ${G.found} of ${G.finds.length} things.`;}
+  if(G.teams){
+    // most finds wins (first to 5); if the clues ran out level, points decide
+    const fr=G.tf.r||0,fb=G.tf.b||0,pr=G.ts.r||0,pb=G.ts.b||0,w=fr!==fb?(fr>fb?'r':'b'):pr!==pb?(pr>pb?'r':'b'):'';
+    h.textContent=!w?'It’s a tie!':w==='r'?'🔴 Red team wins!':'🔵 Blue team wins!';big.textContent=`🔴 ${fr} · 🔵 ${fb}`;
+    p.textContent=`Finds, first to ${TEAM_GOAL}. Points: 🔴 ${pr} · 🔵 ${pb}${fr===fb&&w?' (points broke the tie)':''}.`;}
   if(G.hs){
     const rank=Object.entries(G.pts).sort((x,y)=>y[1]-x[1]);
     h.textContent='Hide & seek results';big.textContent=rank.length?`${G.pnames[rank[0][0]]||'Someone'} wins!`:'';big.style.fontSize='40px';
