@@ -4,10 +4,25 @@
 function setOutline(o,mat){for(const m of o.outlines)m.material=mat;}
 const flashes=[];
 function flashOutline(o,mat,dur){setOutline(o,mat);flashes.push({o,until:performance.now()+dur*1000});}
-let revealHi=null;
+let revealHi=null,revealTag=null;
+// a sign that floats over the answer and shows through walls, so you can see where it was
+function labelSprite(text){
+  const c=document.createElement('canvas'),x=c.getContext('2d');c.height=72;
+  const font='900 34px Nunito, sans-serif';if(x){x.font=font;c.width=Math.min(900,Math.ceil(x.measureText(text).width)+48);}
+  if(x){x.font=font;x.fillStyle='#FFD23F';rrect(x,3,3,c.width-6,c.height-6,20);x.fill();x.lineWidth=5;x.strokeStyle='#2B2040';x.stroke();
+    x.fillStyle='#2B2040';x.textAlign='center';x.textBaseline='middle';x.fillText(text,c.width/2,c.height/2+2);}
+  const s=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(c),depthTest:false,transparent:true,sizeAttenuation:false}));
+  s.scale.set(0.075*c.width/c.height,0.075,1);s.renderOrder=30;return s;
+}
+// the answer's ⭐ on the compass (made on first use: the compass is set up later)
+let revealMark=null;
+const markEl=()=>revealMark||(revealMark=Object.assign(document.createElement('span'),{className:'tick',textContent:'⭐'}),compassEl.appendChild(revealMark),revealMark);
 function setRevealHighlight(id){
   if(revealHi!=null&&W.list[revealHi])setOutline(W.list[revealHi],INK);revealHi=null;beacon.visible=false;
-  if(id==null||!W.list[id])return;revealHi=id;setOutline(W.list[id],GOLD);beacon.visible=true;beacon.userData.o=W.list[id];
+  if(revealTag){scene.remove(revealTag);revealTag.material.map.dispose();revealTag.material.dispose();revealTag=null;}
+  markEl().style.display='none';
+  if(id==null||!W.list[id])return;const o=W.list[id];revealHi=id;setOutline(o,GOLD);o.obj.visible=true;beacon.visible=true;beacon.userData.o=o;
+  revealTag=labelSprite(`It was ${o.n}!`);scene.add(revealTag);
 }
 const beacon=new THREE.Group();
 {const m=new THREE.Mesh(new THREE.CylinderGeometry(0.9,0.9,60,16,1,true),new THREE.MeshBasicMaterial({color:0xFFD23F,transparent:true,opacity:0.28,depthWrite:false,blending:THREE.AdditiveBlending,side:THREE.DoubleSide}));
@@ -45,7 +60,8 @@ function updateFx(dt){
   for(let i=flashes.length-1;i>=0;i--){const f=flashes[i];if(now>f.until){setOutline(f.o,f.o.id===revealHi?GOLD:(f.o.id===Spy.target&&G.spy===myPeer()?SPYMAT:INK));flashes.splice(i,1);}}
   for(let i=confetti.length-1;i>=0;i--){const m=confetti[i],u=m.userData;u.life-=dt;u.v.y-=14*dt;u.v.multiplyScalar(1-1.2*dt);m.position.addScaledVector(u.v,dt);m.rotation.x+=u.s.x*dt;m.rotation.y+=u.s.y*dt;
     if(u.life<=0){scene.remove(m);confetti.splice(i,1);}}
-  if(beacon.visible&&beacon.userData.o){const c=objCenter(beacon.userData.o);beacon.position.set(c.x,c.y+1.2,c.z);beacon.userData.star.rotation.y+=dt*2;beacon.userData.star.position.y=2.2+Math.sin(now/300)*0.3;}
+  if(beacon.visible&&beacon.userData.o){const c=objCenter(beacon.userData.o);beacon.position.set(c.x,c.y+1.2,c.z);
+    if(revealTag){const b=new THREE.Box3().setFromObject(beacon.userData.o.obj);revealTag.position.set(c.x,(b.isEmpty()?c.y:b.max.y)+1.2,c.z);}beacon.userData.star.rotation.y+=dt*2;beacon.userData.star.position.y=2.2+Math.sin(now/300)*0.3;}
   for(let i=pings.length-1;i>=0;i--){const p=pings[i];const s=1+((now/600)%1)*1.5;p.ring.scale.set(s,s,s);p.ring.material.opacity=0.9*(1-((now/600)%1));
     if(now>p.until){scene.remove(p.g);p.el.remove();pings.splice(i,1);}}
 }

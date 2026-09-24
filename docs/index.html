@@ -136,6 +136,8 @@ input[type=text],textarea{font:inherit;font-weight:800;border:3px solid var(--in
 .btn.pulse{animation:pulse 1.2s ease-in-out infinite}
 @keyframes pulse{50%{transform:scale(1.08)}}
 @media (prefers-reduced-motion:reduce){.btn.pulse{animation:none}}
+#sensIn{width:auto;flex:1;max-width:220px;accent-color:#7A5CFA}
+#sensVal{font-family:var(--display);font-weight:400;min-width:3em}
 /* ---------- HUD ---------- */
 #hud{position:fixed;inset:0;pointer-events:none;z-index:10}
 #hud > *{pointer-events:auto}
@@ -165,12 +167,6 @@ input[type=text],textarea{font:inherit;font-weight:800;border:3px solid var(--in
 #cross::before,#cross::after{content:"";position:absolute;background:#fff;border:2px solid #2B2040;border-radius:3px}
 #cross::before{left:10px;top:0;width:6px;height:26px}
 #cross::after{top:10px;left:0;height:6px;width:26px}
-#bino{position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse 34% 44% at 38% 50%,transparent 96%,#140E26 97%),radial-gradient(ellipse 34% 44% at 62% 50%,transparent 96%,#140E26 97%);opacity:0;transition:opacity .15s}
-#bino.on{opacity:1;background:
-  radial-gradient(ellipse 30% 42% at 38% 50%,transparent 97%,rgba(20,14,38,0) 97.5%),
-  radial-gradient(ellipse 30% 42% at 62% 50%,transparent 97%,rgba(20,14,38,0) 97.5%)}
-#binoMask{position:absolute;inset:0;pointer-events:none;opacity:0;transition:opacity .15s}
-#binoMask.on{opacity:1}
 #chat{position:absolute;left:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px));width:min(360px,calc(100% - 32px));display:flex;flex-direction:column;gap:8px}
 #chatLog{max-height:190px;overflow-y:auto;display:flex;flex-direction:column;gap:3px;padding:10px 12px;font-weight:800;font-size:14px}
 #chatLog .sys{color:var(--muted)}
@@ -232,6 +228,31 @@ kbd{font-family:var(--body);font-weight:900;background:var(--paper);color:var(--
 #coinPop.on{animation:coinUp 1.4s ease-out}
 @keyframes coinUp{0%{opacity:0;transform:translate(-50%,14px)}15%{opacity:1}100%{opacity:0;transform:translate(-50%,-6px)}}
 
+/* exit button on the score bar */
+.exitBtn{border:2px solid var(--ink);border-radius:10px;background:var(--paper);color:var(--text);font-weight:900;font-size:13px;padding:3px 8px;white-space:nowrap;align-self:center}
+.exitBtn.armed{background:var(--coral);color:#fff}
+.touch .exitBtn{font-size:11px;padding:2px 6px}
+.touch #clue:not(.min){padding-right:34px}
+/* a compact end screen: buttons up top, the list scrolls */
+#recap .panel{width:min(480px,100%);padding:14px 16px;max-height:92vh}
+#recap h2{font-size:20px;margin:0 0 2px}
+#recap .big{font-size:36px;margin:2px 0 8px}
+#recap .row{margin:0 0 8px}
+#recap .row .btn{padding:.4em .9em;font-size:14px}
+#recap p{font-size:13px}
+#recap .finds{max-height:34vh;overflow:auto;margin:10px 0;gap:6px}
+#recap .finds li{padding:5px 9px;font-size:13px;border-width:2px}
+#recap .finds .q{font-size:12px}
+#recap .finds .pts{font-size:17px}
+#recap .board{font-size:13px}
+.touch #recap{padding:8px}
+.touch #recap .big{font-size:28px}
+.touch #recap .finds{max-height:28vh}
+/* the clue card folds down to a small pill */
+#clueToggle{position:absolute;right:8px;top:6px;border:2px solid var(--ink);border-radius:8px;background:var(--paper);color:var(--text);font-weight:900;font-size:13px;padding:0 7px;line-height:1.5}
+#clue.min{width:auto;min-width:0;padding:4px}
+#clue.min > :not(#clueToggle){display:none!important}
+#clue.min #clueToggle{position:static;border:0;background:none;font-size:15px;padding:2px 8px}
 /* lobby buttons, hide & seek */
 .lobbyBtns{margin-bottom:12px}
 .lobbyBtns .btn{padding:.45em .9em}
@@ -393,7 +414,8 @@ kbd{font-family:var(--body);font-weight:900;background:var(--paper);color:var(--
     <p class="note" id="netNote">Connecting…</p>
     <p class="note" id="dailyNote" hidden></p>
     <div class="joinrow"><button class="btn alt" id="fullBtn" hidden>⛶ Play full screen</button></div>
-    <div class="joinrow gfx"><span class="lbl">Graphics</span><div class="seg" id="gfxSeg"><button data-q="auto">Auto</button><button data-q="high">High</button><button data-q="low">Low</button></div></div>
+    <div class="joinrow gfx"><span class="lbl">Graphics</span><div class="seg" id="gfxSeg"><button data-q="high">High</button><button data-q="low">Low</button></div></div>
+    <div class="joinrow gfx"><label class="lbl" for="sensIn">Look speed</label><input type="range" id="sensIn" min="0.5" max="3" step="0.1"><b id="sensVal"></b></div>
     <p class="note homeTip" id="homeTip" hidden>📱 <b>Play full screen:</b> tap Safari’s Share button, then <b>Add to Home Screen</b>. Open Whereabouts from your home screen and Safari’s bars are gone.</p>
   </div>
 </section>
@@ -405,8 +427,10 @@ kbd{font-family:var(--body);font-weight:900;background:var(--paper);color:var(--
     <div class="stat"><small>Streak</small><b id="streakN">–</b></div>
     <div class="stat"><small>Clue</small><b id="clueNum">–</b></div>
     <div class="stat"><small>Time left</small><b id="timeLeft">–</b></div>
+    <button id="exitBtn" class="exitBtn" type="button"></button>
   </div>
   <div id="clue" class="panel" hidden>
+    <button id="clueToggle" type="button" aria-expanded="true" aria-label="Hide the clue">▴</button>
     <div class="phase" id="cluePhase"></div>
     <p class="main" id="clueMain"></p>
     <ul id="clueHints"></ul>
@@ -417,7 +441,6 @@ kbd{font-family:var(--body);font-weight:900;background:var(--paper);color:var(--
   <div id="compass" class="panel" aria-hidden="true"></div>
   <div id="tools"><button id="coinBtn" aria-label="Your coins. Open the shop">🪙 <b class="coinsN">0</b><span id="coinPop" aria-hidden="true"></span></button><button id="wardrobeBtn" aria-label="Change outfit">👕 Outfit</button><button id="mute" aria-label="Toggle sound">Sound on</button></div>
   <div id="cross"></div>
-  <div id="binoMask"></div>
   <div id="toast" role="status" aria-live="polite"></div>
   <div id="tip" class="panel" hidden></div>
 
@@ -469,7 +492,6 @@ kbd{font-family:var(--body);font-weight:900;background:var(--paper);color:var(--
     <div id="joy" role="application" aria-label="Walk: drag the stick"><div id="joyKnob"></div></div>
     <div id="tbtns">
       <button class="tb" data-act="chat" aria-label="Chat">💬</button>
-      <button class="tb" data-act="bino" aria-label="Binoculars" aria-pressed="false">🔭</button>
       <button class="tb jump" data-act="jump" aria-label="Jump">Jump</button>
     </div>
   </div>
@@ -486,7 +508,6 @@ kbd{font-family:var(--body);font-weight:900;background:var(--paper);color:var(--
       <kbd>WASD</kbd><span>Walk (Shift to run)</span>
       <kbd>Mouse</kbd><span>Look around</span>
       <kbd>Click</kbd><span>Guess what's under the crosshair</span>
-      <kbd>B / Right-click</kbd><span>Binoculars</span>
       <kbd>Q</kbd><span>Ping a spot for your team</span>
       <kbd>Space</kbd><span>Jump</span>
       <kbd>1–5</kbd><span>Wave, point, dance, shrug, cheer</span>
@@ -519,11 +540,10 @@ const sr=(a,b)=>a+srand()*(b-a);
 const pick=a=>a[Math.floor(Math.random()*a.length)];
 const wclock=()=>(Date.now()/1000)%100000;   // shared-ish clock so moving things line up between players
 
-// graphics quality: auto picks high on computers and mid on phones
+// graphics quality: high unless you choose low on the title screen
 const GFX=(()=>{
-  let q='auto';try{q=localStorage.getItem('wb.gfx')||'auto';}catch(e){}
-  const coarse=!!(window.matchMedia&&matchMedia('(pointer:coarse)').matches);
-  const lvl=q==='high'||q==='low'?q:(coarse?'mid':'high');
+  let q='high';try{q=localStorage.getItem('wb.gfx')==='low'?'low':'high';}catch(e){}
+  const lvl=q;
   // cull: small things aren't drawn beyond this; ink: outlines aren't drawn beyond this
   return {q,lvl,pr:lvl==='high'?2:lvl==='mid'?1.5:1,shadow:lvl!=='low',smap:lvl==='high'?2048:1024,cull:lvl==='high'?90:lvl==='mid'?60:42,ink:lvl==='high'?1e9:lvl==='mid'?40:26,aa:lvl!=='low'};
 })();
@@ -2263,7 +2283,7 @@ function animBean(b,st,t){
 /* =========================================================
    Local player
    ========================================================= */
-const P={pos:new V3(sr(-3,3),0.4,sr(4,7)),vel:new V3(),yaw:Math.PI,pitch:0.32,binoPitch:0,face:Math.PI,onGround:true,bino:false,an:0,em:null,emAt:0,bean:null,wob:0};
+const P={pos:new V3(sr(-3,3),0.4,sr(4,7)),vel:new V3(),yaw:Math.PI,pitch:0.32,face:Math.PI,onGround:true,an:0,em:null,emAt:0,bean:null,wob:0};
 const keys={};
 let chatFocus=false;
 function updatePlayer(dt){
@@ -2275,7 +2295,7 @@ function updatePlayer(dt){
   const dir=f.multiplyScalar(fw).add(r.multiplyScalar(st));
   const moving=dir.lengthSq()>0.01; if(moving) dir.normalize();
   const run=keys.ShiftLeft||keys.ShiftRight||Math.hypot(joy.x,joy.y)>0.95;
-  const speed=P.bino?2.2:(run?10.5:6.4);
+  const speed=run?10.5:6.4;
   P.vel.x=lerp(P.vel.x,dir.x*speed,damp(P.onGround?12:4,dt));
   P.vel.z=lerp(P.vel.z,dir.z*speed,damp(P.onGround?12:4,dt));
   if(!chatFocus&&!frozen&&(keys.Space||P.jumpReq)&&P.onGround){P.vel.y=8.6;P.onGround=false;sfx.jump();}
@@ -2296,7 +2316,6 @@ function updatePlayer(dt){
   else P.onGround=false;
   const hs=Math.hypot(P.vel.x,P.vel.z);
   if(hs>0.5) P.face=angLerp(P.face,Math.atan2(P.vel.x,P.vel.z),damp(14,dt));
-  if(P.bino) P.face=angLerp(P.face,P.yaw,damp(10,dt));
   P.an=!P.onGround?3:hs>8?2:hs>0.8?1:0;
   P.bean.position.copy(P.pos);P.bean.rotation.y=P.face;
   if(P.wob>0){P.wob-=dt;P.bean.rotation.z=Math.sin(P.wob*30)*0.12*P.wob;}else P.bean.rotation.z=0;
@@ -2314,22 +2333,13 @@ function collide(p){
 const camTmp=new V3(),lookTmp=new V3();
 function updateCamera(dt){
   const head=camTmp.set(P.pos.x,P.pos.y+1.35,P.pos.z);
-  if(P.bino){
-    camera.fov=lerp(camera.fov,15,damp(12,dt));
-    const cp=Math.cos(P.binoPitch);
-    const d=lookTmp.set(Math.sin(P.yaw)*cp,Math.sin(P.binoPitch),Math.cos(P.yaw)*cp);
-    camera.position.copy(head).addScaledVector(d,0.5);camera.position.y+=0.25;
-    camera.lookAt(camera.position.x+d.x*10,camera.position.y+d.y*10,camera.position.z+d.z*10);
-    P.bean.visible=false;
-  }else{
-    camera.fov=lerp(camera.fov,62,damp(12,dt));
-    const dist=7.2,cp=Math.cos(P.pitch);
-    let cx=head.x-Math.sin(P.yaw)*dist*cp,cy=head.y+Math.sin(P.pitch)*dist+0.3,cz=head.z-Math.cos(P.yaw)*dist*cp;
-    cy=Math.max(cy,Math.max(landH(cx,cz),-0.45)+0.6);
-    camera.position.set(cx,cy,cz);
-    camera.lookAt(head.x+Math.sin(P.yaw)*3,head.y+0.6,head.z+Math.cos(P.yaw)*3);
-    P.bean.visible=true;
-  }
+  camera.fov=lerp(camera.fov,62,damp(12,dt));
+  const dist=7.2,cp=Math.cos(P.pitch);
+  let cx=head.x-Math.sin(P.yaw)*dist*cp,cy=head.y+Math.sin(P.pitch)*dist+0.3,cz=head.z-Math.cos(P.yaw)*dist*cp;
+  cy=Math.max(cy,Math.max(landH(cx,cz),-0.45)+0.6);
+  camera.position.set(cx,cy,cz);
+  camera.lookAt(head.x+Math.sin(P.yaw)*3,head.y+0.6,head.z+Math.cos(P.yaw)*3);
+  P.bean.visible=true;
   camera.updateProjectionMatrix();
 }
 
@@ -2338,17 +2348,12 @@ function updateCamera(dt){
    ========================================================= */
 let locked=false,noLock=false,suppressClick=false,dragging=null;
 const SENS=0.0024;
+// look speed, set on the title screen (0.5× to 3×), kept per device
+const Look={mult:1};
+try{const v=parseFloat(localStorage.getItem('wb.sens'));if(v>=0.5&&v<=3)Look.mult=v;}catch(e){}
 function inGame(){return !!myCode;}
 function look(dx,dy){
-  if(P.bino){P.yaw-=dx*SENS*0.28;P.binoPitch=clamp(P.binoPitch-dy*SENS*0.28,-0.9,0.9);}
-  else{P.yaw-=dx*SENS;P.pitch=clamp(P.pitch+dy*SENS,-0.25,1.15);}
-}
-function setBino(on){
-  if(P.bino===on) return; P.bino=on;
-  if(on){P.binoPitch=clamp(0.25-P.pitch*0.6,-0.6,0.6);sfx.zoom();}
-  $('#binoMask').classList.toggle('on',on);$('#cross').style.transform=on?'translate(-50%,-50%) scale(.7)':'';
-  const tb=document.querySelector('#tbtns [data-act=bino]');if(tb)tb.setAttribute('aria-pressed',on);
-  sendPresence(true);
+  const k=SENS*Look.mult;P.yaw-=dx*k;P.pitch=clamp(P.pitch+dy*k,-0.25,1.15);
 }
 let lockEverWorked=false;
 document.addEventListener('pointerlockchange',()=>{locked=document.pointerLockElement===canvas;if(locked)lockEverWorked=true;updateTip();});
@@ -2363,7 +2368,6 @@ canvas.addEventListener('pointerdown',e=>{
   audioInit();
   if(e.pointerType==='touch')enableTouch();
   if(!inGame()) return;
-  if(e.button===2){setBino(true);return;}
   if(e.button!==0) return;
   if(dragging&&dragging.id!==e.pointerId) return;   // one look-around finger at a time
   if(!locked&&!noLock){tryLock();suppressClick=true;dragging={id:e.pointerId,x:e.clientX,y:e.clientY,moved:0};return;}
@@ -2371,7 +2375,6 @@ canvas.addEventListener('pointerdown',e=>{
 });
 window.addEventListener('pointercancel',e=>{if(dragging&&dragging.id===e.pointerId)dragging=null;});
 window.addEventListener('pointerup',e=>{
-  if(e.button===2){setBino(false);return;}
   if(e.button!==0||!dragging||dragging.id!==e.pointerId) return;
   const d=dragging;dragging=null;
   if(suppressClick){suppressClick=false;return;}
@@ -2394,14 +2397,13 @@ window.addEventListener('keydown',e=>{
   if(e.repeat) return;
   audioInit();
   if(e.code==='Enter'){e.preventDefault();if(locked)document.exitPointerLock();$('#chatInput').focus();}
-  else if(e.code==='KeyB') setBino(!P.bino);
   else if(e.code==='KeyQ') doPing();
   else if(e.code==='KeyM') toggleMute();
   else if(e.code==='KeyH') $('#side').hidden=!$('#side').hidden;
   else if(/^Digit[1-5]$/.test(e.code)) emote(['wave','point','dance','shrug','cheer'][+e.code.slice(5)-1]);
 });
 window.addEventListener('keyup',e=>{keys[e.code]=false;});
-window.addEventListener('blur',()=>{for(const k in keys)keys[k]=false;setBino(false);});
+window.addEventListener('blur',()=>{for(const k in keys)keys[k]=false;});
 function emote(name){P.em=name;P.emAt=Date.now();sendPresence(true);}
 
 const raycaster=new THREE.Raycaster();
@@ -2639,7 +2641,7 @@ function presence(patch){Object.assign(Net.myPres,patch);if(Net.room)Net.room.pr
 let lastPres=0;
 function sendPresence(force){
   if(!myCode)return;const t=performance.now();if(!force&&t-lastPres<80)return;lastPres=t;
-  presence({x:Math.round(P.pos.x*100)/100,y:Math.round(P.pos.y*100)/100,z:Math.round(P.pos.z*100)/100,ry:Math.round(P.face*100)/100,an:P.an,bi:P.bino?1:0,em:P.em||'',emAt:P.emAt||0});
+  presence({x:Math.round(P.pos.x*100)/100,y:Math.round(P.pos.y*100)/100,z:Math.round(P.pos.z*100)/100,ry:Math.round(P.face*100)/100,an:P.an,em:P.em||'',emAt:P.emAt||0});
 }
 function emit(topic,data){
   data=Object.assign({code:myCode},data);
@@ -2953,7 +2955,7 @@ function pediaAdd(name){
 /* =========================================================
    Game state (the host owns the truth and broadcasts it)
    ========================================================= */
-const PROUND_MS=120000,PICK_MS=45000,REVEAL_MS=5500,SESSION_PER=75000;
+const PROUND_MS=120000,PICK_MS=45000,REVEAL_MS=5500,UNSOLVED_MS=8000,SESSION_PER=75000;
 // start: clue lines shown up front; lines: most lines a game clue grows to
 const DIFF={
   easy:{label:'Easy',hint:15000,round:120000,mult:0.75,start:2,lines:4},
@@ -3092,7 +3094,7 @@ function revealUnsolved(){
   G.streak=0;
   G.finds.push({c:(G.lines[0]||'').slice(0,110),n:id!=null?W.list[id].n:'',by:'',p:0});H.findIdx=G.finds.length-1;
   G.phase='reveal';G.reveal={found:false,id,name:id!=null?W.list[id].n:'',by:'',pts:0,bonus:[]};
-  H.revealEnd=now+REVEAL_MS;commit();
+  H.revealEnd=now+UNSOLVED_MS;commit();   // longer, so everyone can find where it was
 }
 // Red vs Blue: everyone gets a side, newcomers join the smaller team
 function assignTeams(){
@@ -3393,7 +3395,7 @@ function clearSpy(){if(Spy.target!=null&&W.list[Spy.target])setOutline(W.list[Sp
 
 /* =========================================================
    Phone & tablet controls: a thumbstick, drag to look,
-   tap to guess, and a few buttons (chat, binoculars, jump)
+   tap to guess, and a few buttons (chat, jump)
    ========================================================= */
 let touchMode=false;
 const joy={id:null,x:0,y:0};
@@ -3418,14 +3420,13 @@ joyEl.addEventListener('pointermove',e=>{e.stopPropagation();if(e.pointerId===jo
 joyEl.addEventListener('pointerup',joyEnd);
 joyEl.addEventListener('pointercancel',joyEnd);
 
-// Jump and binoculars act the moment a finger lands: a phone never sends a "click" for a
+// Jump acts the moment a finger lands: a phone never sends a "click" for a
 // second finger while the first is still on the stick.
 $('#tbtns').addEventListener('pointerdown',e=>{
   e.stopPropagation();
   const b=e.target.closest('button');if(!b)return;audioInit();
   const a=b.dataset.act;
   if(a==='jump'){e.preventDefault();P.jumpReq=true;}
-  else if(a==='bino'){e.preventDefault();setBino(!P.bino);}
 });
 // chat needs a real tap so the phone will bring up its keyboard
 $('#tbtns').addEventListener('click',e=>{
@@ -3464,10 +3465,25 @@ function buzz(p){if(touchMode&&navigator.vibrate){try{navigator.vibrate(p);}catc
 function setOutline(o,mat){for(const m of o.outlines)m.material=mat;}
 const flashes=[];
 function flashOutline(o,mat,dur){setOutline(o,mat);flashes.push({o,until:performance.now()+dur*1000});}
-let revealHi=null;
+let revealHi=null,revealTag=null;
+// a sign that floats over the answer and shows through walls, so you can see where it was
+function labelSprite(text){
+  const c=document.createElement('canvas'),x=c.getContext('2d');c.height=72;
+  const font='900 34px Nunito, sans-serif';if(x){x.font=font;c.width=Math.min(900,Math.ceil(x.measureText(text).width)+48);}
+  if(x){x.font=font;x.fillStyle='#FFD23F';rrect(x,3,3,c.width-6,c.height-6,20);x.fill();x.lineWidth=5;x.strokeStyle='#2B2040';x.stroke();
+    x.fillStyle='#2B2040';x.textAlign='center';x.textBaseline='middle';x.fillText(text,c.width/2,c.height/2+2);}
+  const s=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(c),depthTest:false,transparent:true,sizeAttenuation:false}));
+  s.scale.set(0.075*c.width/c.height,0.075,1);s.renderOrder=30;return s;
+}
+// the answer's ⭐ on the compass (made on first use: the compass is set up later)
+let revealMark=null;
+const markEl=()=>revealMark||(revealMark=Object.assign(document.createElement('span'),{className:'tick',textContent:'⭐'}),compassEl.appendChild(revealMark),revealMark);
 function setRevealHighlight(id){
   if(revealHi!=null&&W.list[revealHi])setOutline(W.list[revealHi],INK);revealHi=null;beacon.visible=false;
-  if(id==null||!W.list[id])return;revealHi=id;setOutline(W.list[id],GOLD);beacon.visible=true;beacon.userData.o=W.list[id];
+  if(revealTag){scene.remove(revealTag);revealTag.material.map.dispose();revealTag.material.dispose();revealTag=null;}
+  markEl().style.display='none';
+  if(id==null||!W.list[id])return;const o=W.list[id];revealHi=id;setOutline(o,GOLD);o.obj.visible=true;beacon.visible=true;beacon.userData.o=o;
+  revealTag=labelSprite(`It was ${o.n}!`);scene.add(revealTag);
 }
 const beacon=new THREE.Group();
 {const m=new THREE.Mesh(new THREE.CylinderGeometry(0.9,0.9,60,16,1,true),new THREE.MeshBasicMaterial({color:0xFFD23F,transparent:true,opacity:0.28,depthWrite:false,blending:THREE.AdditiveBlending,side:THREE.DoubleSide}));
@@ -3505,7 +3521,8 @@ function updateFx(dt){
   for(let i=flashes.length-1;i>=0;i--){const f=flashes[i];if(now>f.until){setOutline(f.o,f.o.id===revealHi?GOLD:(f.o.id===Spy.target&&G.spy===myPeer()?SPYMAT:INK));flashes.splice(i,1);}}
   for(let i=confetti.length-1;i>=0;i--){const m=confetti[i],u=m.userData;u.life-=dt;u.v.y-=14*dt;u.v.multiplyScalar(1-1.2*dt);m.position.addScaledVector(u.v,dt);m.rotation.x+=u.s.x*dt;m.rotation.y+=u.s.y*dt;
     if(u.life<=0){scene.remove(m);confetti.splice(i,1);}}
-  if(beacon.visible&&beacon.userData.o){const c=objCenter(beacon.userData.o);beacon.position.set(c.x,c.y+1.2,c.z);beacon.userData.star.rotation.y+=dt*2;beacon.userData.star.position.y=2.2+Math.sin(now/300)*0.3;}
+  if(beacon.visible&&beacon.userData.o){const c=objCenter(beacon.userData.o);beacon.position.set(c.x,c.y+1.2,c.z);
+    if(revealTag){const b=new THREE.Box3().setFromObject(beacon.userData.o.obj);revealTag.position.set(c.x,(b.isEmpty()?c.y:b.max.y)+1.2,c.z);}beacon.userData.star.rotation.y+=dt*2;beacon.userData.star.position.y=2.2+Math.sin(now/300)*0.3;}
   for(let i=pings.length-1;i>=0;i--){const p=pings[i];const s=1+((now/600)%1)*1.5;p.ring.scale.set(s,s,s);p.ring.material.opacity=0.9*(1-((now/600)%1));
     if(now>p.until){scene.remove(p.g);p.el.remove();pings.splice(i,1);}}
 }
@@ -3527,7 +3544,7 @@ function updateRemotes(dt,ts){
     const b=r.bean;const k=damp(12,dt);
     b.position.x=lerp(b.position.x,pr.x,k);b.position.y=lerp(b.position.y,+pr.y||0,k);b.position.z=lerp(b.position.z,+pr.z||0,k);
     r.face=angLerp(r.face,+pr.ry||0,k);b.rotation.y=r.face;
-    if(b.userData.body){animBean(b,{an:pr.an|0,em:typeof pr.em==='string'?pr.em:'',emAt:+pr.emAt||0},ts);b.userData.scope.scale.setScalar(pr.bi?1.6:1);}
+    if(b.userData.body){animBean(b,{an:pr.an|0,em:typeof pr.em==='string'?pr.em:'',emAt:+pr.emAt||0},ts);}
   }
   for(const [k,r] of Remote){if(!seen.has(k)){scene.remove(r.bean);Remote.delete(k);}}
 }
@@ -3548,6 +3565,7 @@ function updateCompass(){
     el.style.background=r.bean.userData.col;place(el,r.bean.position.x,r.bean.position.z);}
   for(const [peer,el] of dotEls){if(!seen.has(peer)){el.remove();dotEls.delete(peer);}}
   for(const p of pings)place(p.el,p.x,p.z);
+  if(revealHi!=null&&W.list[revealHi]){const c=objCenter(W.list[revealHi]);place(markEl(),c.x,c.z);}
 }
 let toastT=null;
 function toast(msg,ms){const el=$('#toast');el.textContent=msg;el.classList.add('on');clearTimeout(toastT);toastT=setTimeout(()=>el.classList.remove('on'),ms||1800);}
@@ -3607,7 +3625,8 @@ function renderAll(){
   $('#clueNum').textContent=(G.phase==='lobby')?'–':(G.phase==='recap'?`${G.total}/${G.total}`:`${Math.min(G.idx+1,G.total)}/${G.total}`);
   // clue card
   const card=$('#clue'),inPlay=G.phase==='pick'||G.phase==='clue'||G.phase==='reveal'||G.phase==='hide'||G.phase==='seek';
-  card.hidden=!inPlay;if(G.r!==seen.cardR){card.classList.remove('open');seen.cardR=G.r;}
+  card.hidden=!inPlay;if(G.r!==seen.cardR){card.classList.remove('open','min');seen.cardR=G.r;}
+  const tg=$('#clueToggle'),mini=card.classList.contains('min');tg.textContent=mini?'💡 Clue ▾':'▴';tg.setAttribute('aria-expanded',!mini);tg.setAttribute('aria-label',mini?'Show the clue':'Hide the clue');
   if(inPlay){
     const ph=$('#cluePhase'),mn=$('#clueMain'),ul=$('#clueHints');ul.textContent='';
     if(G.hs&&G.phase!=='reveal'){ph.textContent=`Round ${G.idx+1} of ${G.total}`;const me_=iAmHider();
@@ -3647,7 +3666,7 @@ function renderAll(){
     if(G.daily){dailyWatch(G.daily);renderBoard($('#dailyBoard'));}
     $('#startBtn').hidden=!host;
   }
-  renderSpy();renderRecap();renderPlayers();updateTip();
+  renderSpy();renderRecap();renderPlayers();updateTip();renderExit();
 }
 function renderPips(){
   const el=$('#pips');el.textContent='';
@@ -3713,7 +3732,8 @@ function renderSpy(focus){
   }
 }
 function renderRecap(){
-  const wrap=$('#recap');if(G.phase!=='recap'){wrap.hidden=true;return;}
+  const wrap=$('#recap');if(G.phase!=='recap'){wrap.hidden=true;seen.recapGone=false;return;}
+  if(seen.recapGone)return;   // closed with “Wander around”: stays closed until the next game
   if(!wrap.hidden&&wrap.dataset.v===String(G.v))return;wrap.dataset.v=String(G.v);
   wrap.hidden=false;if(locked)document.exitPointerLock();
   const b=$('#recapBody');b.textContent='';
@@ -3729,7 +3749,7 @@ function renderRecap(){
   const row=document.createElement('div');row.className='row';
   if(amHost()){const again=document.createElement('button');again.className='btn';again.textContent='Play again';again.onclick=()=>{G.phase='lobby';commit();};row.appendChild(again);}
   else{const w=document.createElement('span');w.style.fontWeight='800';w.textContent=`Waiting for ${peerName(hostPeer())} to start another round.`;row.appendChild(w);}
-  const lv=document.createElement('button');lv.className='btn alt';lv.textContent='Wander around';lv.onclick=()=>{wrap.hidden=true;wrap.dataset.v='x';};row.appendChild(lv);
+  const lv=document.createElement('button');lv.className='btn alt';lv.textContent='Wander around';lv.onclick=()=>{wrap.hidden=true;seen.recapGone=true;renderExit();};row.appendChild(lv);
   if(G.teams){const r=G.ts.r||0,bl=G.ts.b||0;h.textContent=r===bl?'It’s a tie!':r>bl?'🔴 Red team wins!':'🔵 Blue team wins!';big.textContent=`🔴 ${r} · 🔵 ${bl}`;
     p.textContent=`Together you found ${G.found} of ${G.finds.length} things.`;}
   if(G.hs){
@@ -3740,15 +3760,14 @@ function renderRecap(){
     rank.forEach(([peer,pts],i)=>{const li=document.createElement('li');if(peer===myPeer())li.className='me';
       const a=document.createElement('span');a.textContent=['🥇','🥈','🥉'][i]||String(i+1);const n=document.createElement('span');n.textContent=G.pnames[peer]||'Someone';const c=document.createElement('b');c.textContent=pts;
       li.append(a,n,c);ol.appendChild(li);});
-    b.append(h,big,p,p2,ol,row);return;
+    b.append(h,big,row,p,p2,ol);return;
   }
-  b.append(h,big,p,p2,ul);
+  b.append(h,big,row,p,p2,ul);
   if(G.daily){
     const h3=document.createElement('h3');h3.textContent='Today’s board';b.appendChild(h3);
     if(G.dailyMsg){const m=document.createElement('p');m.className='sub';m.textContent=G.dailyMsg;b.appendChild(m);}
     const ol=document.createElement('ol');ol.className='board';ol.id='recapBoard';b.appendChild(ol);renderBoard(ol);
   }
-  b.appendChild(row);
 }
 function updateTip(){
   const tip=$('#tip');if(!myCode){tip.hidden=true;return;}
@@ -3765,13 +3784,8 @@ $('#huntSeg').addEventListener('click',e=>{const b=e.target.closest('button');if
   G.hs=b.dataset.hunt==='hide';G.daily=b.dataset.hunt==='daily'?todayKey():'';if(G.daily||G.hs)G.teams=false;if(G.daily){G.mode='game';G.total=DAILY_N;G.diff='normal';}commit();});
 $('#teamSeg').addEventListener('click',e=>{const b=e.target.closest('button');if(!b||!amHost()||G.phase!=='lobby')return;G.teams=b.dataset.teams==='1';if(G.teams)G.mode='game';commit();});
 $('#startBtn').addEventListener('click',()=>{audioInit();if(amHost()&&G.phase==='lobby'){startGame();tryLock();}});
-
-/* binocular mask drawn to the real screen size */
-function drawBinoMask(){
-  const w=window.innerWidth,h=window.innerHeight,r=Math.min(w*0.27,h*0.44),cx=w/2,cy=h/2,off=r*0.78;
-  $('#binoMask').innerHTML=`<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" aria-hidden="true"><path fill="#140E26" fill-rule="evenodd" d="M0 0H${w}V${h}H0Z M${cx-off-r} ${cy}a${r} ${r} 0 1 0 ${2*r} 0a${r} ${r} 0 1 0 ${-2*r} 0Z M${cx+off-r} ${cy}a${r} ${r} 0 1 0 ${2*r} 0a${r} ${r} 0 1 0 ${-2*r} 0Z"/><circle cx="${cx-off}" cy="${cy}" r="${r}" fill="none" stroke="#2B2040" stroke-width="10"/><circle cx="${cx+off}" cy="${cy}" r="${r}" fill="none" stroke="#2B2040" stroke-width="10"/></svg>`;
-}
-
+// fold the clue card away for a clearer view, and back again
+$('#clueToggle').addEventListener('click',e=>{e.stopPropagation();$('#clue').classList.toggle('min');renderAll();});
 /* =========================================================
    Title screen: your name, your wardrobe and the shop
    ========================================================= */
@@ -3996,10 +4010,41 @@ $('#gfxSeg').addEventListener('click',e=>{
   else location.reload();
 });
 renderGfx();
+
+/* ---------- look speed ---------- */
+{const inp=$('#sensIn'),val=$('#sensVal');inp.value=Look.mult;val.textContent=Look.mult.toFixed(1)+'×';
+ inp.addEventListener('input',()=>{Look.mult=+inp.value;val.textContent=Look.mult.toFixed(1)+'×';try{localStorage.setItem('wb.sens',String(Look.mult));}catch(e){}});}
+
+/* ---------- leaving: the host can end a game for everyone; anyone can leave the room ---------- */
+function leaveRoom(){
+  if(locked)document.exitPointerLock();
+  setDisguise(null);setRevealHighlight(null);clearSpy();
+  presence({code:null});
+  myCode=null;G=freshState();G._recv=Date.now();wasHost=false;
+  for(const r of Remote.values())scene.remove(r.bean);Remote.clear();
+  if(RoomDoc.unsub){RoomDoc.unsub();RoomDoc.unsub=null;}RoomDoc.code=null;
+  if(P.bean){scene.remove(P.bean);P.bean=null;}
+  $('#chatLog').textContent='';$('#recap').hidden=true;$('#hud').hidden=true;
+  Setup.tab='wear';$('#title').hidden=false;renderSetup();
+}
+let exitArmed=0;
+function renderExit(){
+  const b=$('#exitBtn'),inPlay=G.phase!=='lobby'&&G.phase!=='recap',host=amHost();
+  b.textContent=inPlay&&host?(Date.now()<exitArmed?'Tap again to end':'🏠 End game'):G.phase==='recap'&&host?'🏠 Lobby':inPlay?'🚪 Leave':'🚪 Leave room';
+  b.classList.toggle('armed',Date.now()<exitArmed);
+}
+$('#exitBtn').addEventListener('click',()=>{
+  const inPlay=G.phase!=='lobby'&&G.phase!=='recap';
+  if(amHost()&&(inPlay||G.phase==='recap')){
+    if(inPlay&&Date.now()>exitArmed){exitArmed=Date.now()+3000;renderExit();setTimeout(renderExit,3100);return;}
+    exitArmed=0;G.phase='lobby';G.reveal=null;H.target=null;sys('The host ended the game.');commit();return;
+  }
+  leaveRoom();
+});
 /* =========================================================
    Main loop
    ========================================================= */
-function onResize(){const w=window.innerWidth,h=window.innerHeight;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();drawBinoMask();}
+function onResize(){const w=window.innerWidth,h=window.innerHeight;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();}
 window.addEventListener('resize',onResize);
 // far-away small things aren't drawn at all (too small to see or tap from there), and on
 // lighter settings far-away things skip their ink outlines (each outline is a second draw)
@@ -4014,8 +4059,8 @@ function cullTick(dt){
   Cull.t-=dt;if(Cull.t>0)return;Cull.t=0.25;const cx=camera.position.x,cz=camera.position.z;
   for(const c of Cull.list){
     const p=c.obj.position,d=Math.hypot(p.x-cx,p.z-cz);
-    if(c.far!==Infinity)c.obj.visible=d<c.far;
     const lit=(revealHi!=null&&W.list[revealHi].obj===c.obj)||(Spy.target!=null&&W.list[Spy.target].obj===c.obj);
+    if(c.far!==Infinity)c.obj.visible=lit||d<c.far;   // the answer is always drawn while it's being shown
     const ink=lit||d<GFX.ink;if(ink!==c.inkOn){c.inkOn=ink;for(const m of c.ink)m.visible=ink;}
   }
 }

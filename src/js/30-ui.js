@@ -14,6 +14,7 @@ function updateCompass(){
     el.style.background=r.bean.userData.col;place(el,r.bean.position.x,r.bean.position.z);}
   for(const [peer,el] of dotEls){if(!seen.has(peer)){el.remove();dotEls.delete(peer);}}
   for(const p of pings)place(p.el,p.x,p.z);
+  if(revealHi!=null&&W.list[revealHi]){const c=objCenter(W.list[revealHi]);place(markEl(),c.x,c.z);}
 }
 let toastT=null;
 function toast(msg,ms){const el=$('#toast');el.textContent=msg;el.classList.add('on');clearTimeout(toastT);toastT=setTimeout(()=>el.classList.remove('on'),ms||1800);}
@@ -73,7 +74,8 @@ function renderAll(){
   $('#clueNum').textContent=(G.phase==='lobby')?'–':(G.phase==='recap'?`${G.total}/${G.total}`:`${Math.min(G.idx+1,G.total)}/${G.total}`);
   // clue card
   const card=$('#clue'),inPlay=G.phase==='pick'||G.phase==='clue'||G.phase==='reveal'||G.phase==='hide'||G.phase==='seek';
-  card.hidden=!inPlay;if(G.r!==seen.cardR){card.classList.remove('open');seen.cardR=G.r;}
+  card.hidden=!inPlay;if(G.r!==seen.cardR){card.classList.remove('open','min');seen.cardR=G.r;}
+  const tg=$('#clueToggle'),mini=card.classList.contains('min');tg.textContent=mini?'💡 Clue ▾':'▴';tg.setAttribute('aria-expanded',!mini);tg.setAttribute('aria-label',mini?'Show the clue':'Hide the clue');
   if(inPlay){
     const ph=$('#cluePhase'),mn=$('#clueMain'),ul=$('#clueHints');ul.textContent='';
     if(G.hs&&G.phase!=='reveal'){ph.textContent=`Round ${G.idx+1} of ${G.total}`;const me_=iAmHider();
@@ -113,7 +115,7 @@ function renderAll(){
     if(G.daily){dailyWatch(G.daily);renderBoard($('#dailyBoard'));}
     $('#startBtn').hidden=!host;
   }
-  renderSpy();renderRecap();renderPlayers();updateTip();
+  renderSpy();renderRecap();renderPlayers();updateTip();renderExit();
 }
 function renderPips(){
   const el=$('#pips');el.textContent='';
@@ -179,7 +181,8 @@ function renderSpy(focus){
   }
 }
 function renderRecap(){
-  const wrap=$('#recap');if(G.phase!=='recap'){wrap.hidden=true;return;}
+  const wrap=$('#recap');if(G.phase!=='recap'){wrap.hidden=true;seen.recapGone=false;return;}
+  if(seen.recapGone)return;   // closed with “Wander around”: stays closed until the next game
   if(!wrap.hidden&&wrap.dataset.v===String(G.v))return;wrap.dataset.v=String(G.v);
   wrap.hidden=false;if(locked)document.exitPointerLock();
   const b=$('#recapBody');b.textContent='';
@@ -195,7 +198,7 @@ function renderRecap(){
   const row=document.createElement('div');row.className='row';
   if(amHost()){const again=document.createElement('button');again.className='btn';again.textContent='Play again';again.onclick=()=>{G.phase='lobby';commit();};row.appendChild(again);}
   else{const w=document.createElement('span');w.style.fontWeight='800';w.textContent=`Waiting for ${peerName(hostPeer())} to start another round.`;row.appendChild(w);}
-  const lv=document.createElement('button');lv.className='btn alt';lv.textContent='Wander around';lv.onclick=()=>{wrap.hidden=true;wrap.dataset.v='x';};row.appendChild(lv);
+  const lv=document.createElement('button');lv.className='btn alt';lv.textContent='Wander around';lv.onclick=()=>{wrap.hidden=true;seen.recapGone=true;renderExit();};row.appendChild(lv);
   if(G.teams){const r=G.ts.r||0,bl=G.ts.b||0;h.textContent=r===bl?'It’s a tie!':r>bl?'🔴 Red team wins!':'🔵 Blue team wins!';big.textContent=`🔴 ${r} · 🔵 ${bl}`;
     p.textContent=`Together you found ${G.found} of ${G.finds.length} things.`;}
   if(G.hs){
@@ -206,15 +209,14 @@ function renderRecap(){
     rank.forEach(([peer,pts],i)=>{const li=document.createElement('li');if(peer===myPeer())li.className='me';
       const a=document.createElement('span');a.textContent=['🥇','🥈','🥉'][i]||String(i+1);const n=document.createElement('span');n.textContent=G.pnames[peer]||'Someone';const c=document.createElement('b');c.textContent=pts;
       li.append(a,n,c);ol.appendChild(li);});
-    b.append(h,big,p,p2,ol,row);return;
+    b.append(h,big,row,p,p2,ol);return;
   }
-  b.append(h,big,p,p2,ul);
+  b.append(h,big,row,p,p2,ul);
   if(G.daily){
     const h3=document.createElement('h3');h3.textContent='Today’s board';b.appendChild(h3);
     if(G.dailyMsg){const m=document.createElement('p');m.className='sub';m.textContent=G.dailyMsg;b.appendChild(m);}
     const ol=document.createElement('ol');ol.className='board';ol.id='recapBoard';b.appendChild(ol);renderBoard(ol);
   }
-  b.appendChild(row);
 }
 function updateTip(){
   const tip=$('#tip');if(!myCode){tip.hidden=true;return;}
@@ -231,10 +233,5 @@ $('#huntSeg').addEventListener('click',e=>{const b=e.target.closest('button');if
   G.hs=b.dataset.hunt==='hide';G.daily=b.dataset.hunt==='daily'?todayKey():'';if(G.daily||G.hs)G.teams=false;if(G.daily){G.mode='game';G.total=DAILY_N;G.diff='normal';}commit();});
 $('#teamSeg').addEventListener('click',e=>{const b=e.target.closest('button');if(!b||!amHost()||G.phase!=='lobby')return;G.teams=b.dataset.teams==='1';if(G.teams)G.mode='game';commit();});
 $('#startBtn').addEventListener('click',()=>{audioInit();if(amHost()&&G.phase==='lobby'){startGame();tryLock();}});
-
-/* binocular mask drawn to the real screen size */
-function drawBinoMask(){
-  const w=window.innerWidth,h=window.innerHeight,r=Math.min(w*0.27,h*0.44),cx=w/2,cy=h/2,off=r*0.78;
-  $('#binoMask').innerHTML=`<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" aria-hidden="true"><path fill="#140E26" fill-rule="evenodd" d="M0 0H${w}V${h}H0Z M${cx-off-r} ${cy}a${r} ${r} 0 1 0 ${2*r} 0a${r} ${r} 0 1 0 ${-2*r} 0Z M${cx+off-r} ${cy}a${r} ${r} 0 1 0 ${2*r} 0a${r} ${r} 0 1 0 ${-2*r} 0Z"/><circle cx="${cx-off}" cy="${cy}" r="${r}" fill="none" stroke="#2B2040" stroke-width="10"/><circle cx="${cx+off}" cy="${cy}" r="${r}" fill="none" stroke="#2B2040" stroke-width="10"/></svg>`;
-}
-
+// fold the clue card away for a clearer view, and back again
+$('#clueToggle').addEventListener('click',e=>{e.stopPropagation();$('#clue').classList.toggle('min');renderAll();});

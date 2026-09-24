@@ -1,7 +1,7 @@
 /* =========================================================
    Game state (the host owns the truth and broadcasts it)
    ========================================================= */
-const PROUND_MS=120000,PICK_MS=45000,REVEAL_MS=5500,SESSION_PER=75000;
+const PROUND_MS=120000,PICK_MS=45000,REVEAL_MS=5500,UNSOLVED_MS=8000,SESSION_PER=75000;
 // start: clue lines shown up front; lines: most lines a game clue grows to
 const DIFF={
   easy:{label:'Easy',hint:15000,round:120000,mult:0.75,start:2,lines:4},
@@ -140,7 +140,7 @@ function revealUnsolved(){
   G.streak=0;
   G.finds.push({c:(G.lines[0]||'').slice(0,110),n:id!=null?W.list[id].n:'',by:'',p:0});H.findIdx=G.finds.length-1;
   G.phase='reveal';G.reveal={found:false,id,name:id!=null?W.list[id].n:'',by:'',pts:0,bonus:[]};
-  H.revealEnd=now+REVEAL_MS;commit();
+  H.revealEnd=now+UNSOLVED_MS;commit();   // longer, so everyone can find where it was
 }
 // Red vs Blue: everyone gets a side, newcomers join the smaller team
 function assignTeams(){

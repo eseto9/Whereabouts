@@ -1,7 +1,7 @@
 /* =========================================================
    Local player
    ========================================================= */
-const P={pos:new V3(sr(-3,3),0.4,sr(4,7)),vel:new V3(),yaw:Math.PI,pitch:0.32,binoPitch:0,face:Math.PI,onGround:true,bino:false,an:0,em:null,emAt:0,bean:null,wob:0};
+const P={pos:new V3(sr(-3,3),0.4,sr(4,7)),vel:new V3(),yaw:Math.PI,pitch:0.32,face:Math.PI,onGround:true,an:0,em:null,emAt:0,bean:null,wob:0};
 const keys={};
 let chatFocus=false;
 function updatePlayer(dt){
@@ -13,7 +13,7 @@ function updatePlayer(dt){
   const dir=f.multiplyScalar(fw).add(r.multiplyScalar(st));
   const moving=dir.lengthSq()>0.01; if(moving) dir.normalize();
   const run=keys.ShiftLeft||keys.ShiftRight||Math.hypot(joy.x,joy.y)>0.95;
-  const speed=P.bino?2.2:(run?10.5:6.4);
+  const speed=run?10.5:6.4;
   P.vel.x=lerp(P.vel.x,dir.x*speed,damp(P.onGround?12:4,dt));
   P.vel.z=lerp(P.vel.z,dir.z*speed,damp(P.onGround?12:4,dt));
   if(!chatFocus&&!frozen&&(keys.Space||P.jumpReq)&&P.onGround){P.vel.y=8.6;P.onGround=false;sfx.jump();}
@@ -34,7 +34,6 @@ function updatePlayer(dt){
   else P.onGround=false;
   const hs=Math.hypot(P.vel.x,P.vel.z);
   if(hs>0.5) P.face=angLerp(P.face,Math.atan2(P.vel.x,P.vel.z),damp(14,dt));
-  if(P.bino) P.face=angLerp(P.face,P.yaw,damp(10,dt));
   P.an=!P.onGround?3:hs>8?2:hs>0.8?1:0;
   P.bean.position.copy(P.pos);P.bean.rotation.y=P.face;
   if(P.wob>0){P.wob-=dt;P.bean.rotation.z=Math.sin(P.wob*30)*0.12*P.wob;}else P.bean.rotation.z=0;
@@ -52,22 +51,13 @@ function collide(p){
 const camTmp=new V3(),lookTmp=new V3();
 function updateCamera(dt){
   const head=camTmp.set(P.pos.x,P.pos.y+1.35,P.pos.z);
-  if(P.bino){
-    camera.fov=lerp(camera.fov,15,damp(12,dt));
-    const cp=Math.cos(P.binoPitch);
-    const d=lookTmp.set(Math.sin(P.yaw)*cp,Math.sin(P.binoPitch),Math.cos(P.yaw)*cp);
-    camera.position.copy(head).addScaledVector(d,0.5);camera.position.y+=0.25;
-    camera.lookAt(camera.position.x+d.x*10,camera.position.y+d.y*10,camera.position.z+d.z*10);
-    P.bean.visible=false;
-  }else{
-    camera.fov=lerp(camera.fov,62,damp(12,dt));
-    const dist=7.2,cp=Math.cos(P.pitch);
-    let cx=head.x-Math.sin(P.yaw)*dist*cp,cy=head.y+Math.sin(P.pitch)*dist+0.3,cz=head.z-Math.cos(P.yaw)*dist*cp;
-    cy=Math.max(cy,Math.max(landH(cx,cz),-0.45)+0.6);
-    camera.position.set(cx,cy,cz);
-    camera.lookAt(head.x+Math.sin(P.yaw)*3,head.y+0.6,head.z+Math.cos(P.yaw)*3);
-    P.bean.visible=true;
-  }
+  camera.fov=lerp(camera.fov,62,damp(12,dt));
+  const dist=7.2,cp=Math.cos(P.pitch);
+  let cx=head.x-Math.sin(P.yaw)*dist*cp,cy=head.y+Math.sin(P.pitch)*dist+0.3,cz=head.z-Math.cos(P.yaw)*dist*cp;
+  cy=Math.max(cy,Math.max(landH(cx,cz),-0.45)+0.6);
+  camera.position.set(cx,cy,cz);
+  camera.lookAt(head.x+Math.sin(P.yaw)*3,head.y+0.6,head.z+Math.cos(P.yaw)*3);
+  P.bean.visible=true;
   camera.updateProjectionMatrix();
 }
 

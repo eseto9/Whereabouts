@@ -15,11 +15,10 @@ const sr=(a,b)=>a+srand()*(b-a);
 const pick=a=>a[Math.floor(Math.random()*a.length)];
 const wclock=()=>(Date.now()/1000)%100000;   // shared-ish clock so moving things line up between players
 
-// graphics quality: auto picks high on computers and mid on phones
+// graphics quality: high unless you choose low on the title screen
 const GFX=(()=>{
-  let q='auto';try{q=localStorage.getItem('wb.gfx')||'auto';}catch(e){}
-  const coarse=!!(window.matchMedia&&matchMedia('(pointer:coarse)').matches);
-  const lvl=q==='high'||q==='low'?q:(coarse?'mid':'high');
+  let q='high';try{q=localStorage.getItem('wb.gfx')==='low'?'low':'high';}catch(e){}
+  const lvl=q;
   // cull: small things aren't drawn beyond this; ink: outlines aren't drawn beyond this
   return {q,lvl,pr:lvl==='high'?2:lvl==='mid'?1.5:1,shadow:lvl!=='low',smap:lvl==='high'?2048:1024,cull:lvl==='high'?90:lvl==='mid'?60:42,ink:lvl==='high'?1e9:lvl==='mid'?40:26,aa:lvl!=='low'};
 })();

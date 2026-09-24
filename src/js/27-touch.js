@@ -1,6 +1,6 @@
 /* =========================================================
    Phone & tablet controls: a thumbstick, drag to look,
-   tap to guess, and a few buttons (chat, binoculars, jump)
+   tap to guess, and a few buttons (chat, jump)
    ========================================================= */
 let touchMode=false;
 const joy={id:null,x:0,y:0};
@@ -25,14 +25,13 @@ joyEl.addEventListener('pointermove',e=>{e.stopPropagation();if(e.pointerId===jo
 joyEl.addEventListener('pointerup',joyEnd);
 joyEl.addEventListener('pointercancel',joyEnd);
 
-// Jump and binoculars act the moment a finger lands: a phone never sends a "click" for a
+// Jump acts the moment a finger lands: a phone never sends a "click" for a
 // second finger while the first is still on the stick.
 $('#tbtns').addEventListener('pointerdown',e=>{
   e.stopPropagation();
   const b=e.target.closest('button');if(!b)return;audioInit();
   const a=b.dataset.act;
   if(a==='jump'){e.preventDefault();P.jumpReq=true;}
-  else if(a==='bino'){e.preventDefault();setBino(!P.bino);}
 });
 // chat needs a real tap so the phone will bring up its keyboard
 $('#tbtns').addEventListener('click',e=>{

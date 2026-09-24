@@ -59,7 +59,8 @@
     <p class="note" id="netNote">Connecting…</p>
     <p class="note" id="dailyNote" hidden></p>
     <div class="joinrow"><button class="btn alt" id="fullBtn" hidden>⛶ Play full screen</button></div>
-    <div class="joinrow gfx"><span class="lbl">Graphics</span><div class="seg" id="gfxSeg"><button data-q="auto">Auto</button><button data-q="high">High</button><button data-q="low">Low</button></div></div>
+    <div class="joinrow gfx"><span class="lbl">Graphics</span><div class="seg" id="gfxSeg"><button data-q="high">High</button><button data-q="low">Low</button></div></div>
+    <div class="joinrow gfx"><label class="lbl" for="sensIn">Look speed</label><input type="range" id="sensIn" min="0.5" max="3" step="0.1"><b id="sensVal"></b></div>
     <p class="note homeTip" id="homeTip" hidden>📱 <b>Play full screen:</b> tap Safari’s Share button, then <b>Add to Home Screen</b>. Open Whereabouts from your home screen and Safari’s bars are gone.</p>
   </div>
 </section>
@@ -71,8 +72,10 @@
     <div class="stat"><small>Streak</small><b id="streakN">–</b></div>
     <div class="stat"><small>Clue</small><b id="clueNum">–</b></div>
     <div class="stat"><small>Time left</small><b id="timeLeft">–</b></div>
+    <button id="exitBtn" class="exitBtn" type="button"></button>
   </div>
   <div id="clue" class="panel" hidden>
+    <button id="clueToggle" type="button" aria-expanded="true" aria-label="Hide the clue">▴</button>
     <div class="phase" id="cluePhase"></div>
     <p class="main" id="clueMain"></p>
     <ul id="clueHints"></ul>
@@ -83,7 +86,6 @@
   <div id="compass" class="panel" aria-hidden="true"></div>
   <div id="tools"><button id="coinBtn" aria-label="Your coins. Open the shop">🪙 <b class="coinsN">0</b><span id="coinPop" aria-hidden="true"></span></button><button id="wardrobeBtn" aria-label="Change outfit">👕 Outfit</button><button id="mute" aria-label="Toggle sound">Sound on</button></div>
   <div id="cross"></div>
-  <div id="binoMask"></div>
   <div id="toast" role="status" aria-live="polite"></div>
   <div id="tip" class="panel" hidden></div>
 
@@ -135,7 +137,6 @@
     <div id="joy" role="application" aria-label="Walk: drag the stick"><div id="joyKnob"></div></div>
     <div id="tbtns">
       <button class="tb" data-act="chat" aria-label="Chat">💬</button>
-      <button class="tb" data-act="bino" aria-label="Binoculars" aria-pressed="false">🔭</button>
       <button class="tb jump" data-act="jump" aria-label="Jump">Jump</button>
     </div>
   </div>
@@ -152,7 +153,6 @@
       <kbd>WASD</kbd><span>Walk (Shift to run)</span>
       <kbd>Mouse</kbd><span>Look around</span>
       <kbd>Click</kbd><span>Guess what's under the crosshair</span>
-      <kbd>B / Right-click</kbd><span>Binoculars</span>
       <kbd>Q</kbd><span>Ping a spot for your team</span>
       <kbd>Space</kbd><span>Jump</span>
       <kbd>1–5</kbd><span>Wave, point, dance, shrug, cheer</span>

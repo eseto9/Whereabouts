@@ -3,17 +3,12 @@
    ========================================================= */
 let locked=false,noLock=false,suppressClick=false,dragging=null;
 const SENS=0.0024;
+// look speed, set on the title screen (0.5× to 3×), kept per device
+const Look={mult:1};
+try{const v=parseFloat(localStorage.getItem('wb.sens'));if(v>=0.5&&v<=3)Look.mult=v;}catch(e){}
 function inGame(){return !!myCode;}
 function look(dx,dy){
-  if(P.bino){P.yaw-=dx*SENS*0.28;P.binoPitch=clamp(P.binoPitch-dy*SENS*0.28,-0.9,0.9);}
-  else{P.yaw-=dx*SENS;P.pitch=clamp(P.pitch+dy*SENS,-0.25,1.15);}
-}
-function setBino(on){
-  if(P.bino===on) return; P.bino=on;
-  if(on){P.binoPitch=clamp(0.25-P.pitch*0.6,-0.6,0.6);sfx.zoom();}
-  $('#binoMask').classList.toggle('on',on);$('#cross').style.transform=on?'translate(-50%,-50%) scale(.7)':'';
-  const tb=document.querySelector('#tbtns [data-act=bino]');if(tb)tb.setAttribute('aria-pressed',on);
-  sendPresence(true);
+  const k=SENS*Look.mult;P.yaw-=dx*k;P.pitch=clamp(P.pitch+dy*k,-0.25,1.15);
 }
 let lockEverWorked=false;
 document.addEventListener('pointerlockchange',()=>{locked=document.pointerLockElement===canvas;if(locked)lockEverWorked=true;updateTip();});
@@ -28,7 +23,6 @@ canvas.addEventListener('pointerdown',e=>{
   audioInit();
   if(e.pointerType==='touch')enableTouch();
   if(!inGame()) return;
-  if(e.button===2){setBino(true);return;}
   if(e.button!==0) return;
   if(dragging&&dragging.id!==e.pointerId) return;   // one look-around finger at a time
   if(!locked&&!noLock){tryLock();suppressClick=true;dragging={id:e.pointerId,x:e.clientX,y:e.clientY,moved:0};return;}
@@ -36,7 +30,6 @@ canvas.addEventListener('pointerdown',e=>{
 });
 window.addEventListener('pointercancel',e=>{if(dragging&&dragging.id===e.pointerId)dragging=null;});
 window.addEventListener('pointerup',e=>{
-  if(e.button===2){setBino(false);return;}
   if(e.button!==0||!dragging||dragging.id!==e.pointerId) return;
   const d=dragging;dragging=null;
   if(suppressClick){suppressClick=false;return;}
@@ -59,14 +52,13 @@ window.addEventListener('keydown',e=>{
   if(e.repeat) return;
   audioInit();
   if(e.code==='Enter'){e.preventDefault();if(locked)document.exitPointerLock();$('#chatInput').focus();}
-  else if(e.code==='KeyB') setBino(!P.bino);
   else if(e.code==='KeyQ') doPing();
   else if(e.code==='KeyM') toggleMute();
   else if(e.code==='KeyH') $('#side').hidden=!$('#side').hidden;
   else if(/^Digit[1-5]$/.test(e.code)) emote(['wave','point','dance','shrug','cheer'][+e.code.slice(5)-1]);
 });
 window.addEventListener('keyup',e=>{keys[e.code]=false;});
-window.addEventListener('blur',()=>{for(const k in keys)keys[k]=false;setBino(false);});
+window.addEventListener('blur',()=>{for(const k in keys)keys[k]=false;});
 function emote(name){P.em=name;P.emAt=Date.now();sendPresence(true);}
 
 const raycaster=new THREE.Raycaster();

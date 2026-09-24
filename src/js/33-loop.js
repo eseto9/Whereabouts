@@ -1,7 +1,7 @@
 /* =========================================================
    Main loop
    ========================================================= */
-function onResize(){const w=window.innerWidth,h=window.innerHeight;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();drawBinoMask();}
+function onResize(){const w=window.innerWidth,h=window.innerHeight;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();}
 window.addEventListener('resize',onResize);
 // far-away small things aren't drawn at all (too small to see or tap from there), and on
 // lighter settings far-away things skip their ink outlines (each outline is a second draw)
@@ -16,8 +16,8 @@ function cullTick(dt){
   Cull.t-=dt;if(Cull.t>0)return;Cull.t=0.25;const cx=camera.position.x,cz=camera.position.z;
   for(const c of Cull.list){
     const p=c.obj.position,d=Math.hypot(p.x-cx,p.z-cz);
-    if(c.far!==Infinity)c.obj.visible=d<c.far;
     const lit=(revealHi!=null&&W.list[revealHi].obj===c.obj)||(Spy.target!=null&&W.list[Spy.target].obj===c.obj);
+    if(c.far!==Infinity)c.obj.visible=lit||d<c.far;   // the answer is always drawn while it's being shown
     const ink=lit||d<GFX.ink;if(ink!==c.inkOn){c.inkOn=ink;for(const m of c.ink)m.visible=ink;}
   }
 }

@@ -15,7 +15,7 @@ function updateRemotes(dt,ts){
     const b=r.bean;const k=damp(12,dt);
     b.position.x=lerp(b.position.x,pr.x,k);b.position.y=lerp(b.position.y,+pr.y||0,k);b.position.z=lerp(b.position.z,+pr.z||0,k);
     r.face=angLerp(r.face,+pr.ry||0,k);b.rotation.y=r.face;
-    if(b.userData.body){animBean(b,{an:pr.an|0,em:typeof pr.em==='string'?pr.em:'',emAt:+pr.emAt||0},ts);b.userData.scope.scale.setScalar(pr.bi?1.6:1);}
+    if(b.userData.body){animBean(b,{an:pr.an|0,em:typeof pr.em==='string'?pr.em:'',emAt:+pr.emAt||0},ts);}
   }
   for(const [k,r] of Remote){if(!seen.has(k)){scene.remove(r.bean);Remote.delete(k);}}
 }

@@ -222,3 +222,34 @@ $('#gfxSeg').addEventListener('click',e=>{
   else location.reload();
 });
 renderGfx();
+
+/* ---------- look speed ---------- */
+{const inp=$('#sensIn'),val=$('#sensVal');inp.value=Look.mult;val.textContent=Look.mult.toFixed(1)+'×';
+ inp.addEventListener('input',()=>{Look.mult=+inp.value;val.textContent=Look.mult.toFixed(1)+'×';try{localStorage.setItem('wb.sens',String(Look.mult));}catch(e){}});}
+
+/* ---------- leaving: the host can end a game for everyone; anyone can leave the room ---------- */
+function leaveRoom(){
+  if(locked)document.exitPointerLock();
+  setDisguise(null);setRevealHighlight(null);clearSpy();
+  presence({code:null});
+  myCode=null;G=freshState();G._recv=Date.now();wasHost=false;
+  for(const r of Remote.values())scene.remove(r.bean);Remote.clear();
+  if(RoomDoc.unsub){RoomDoc.unsub();RoomDoc.unsub=null;}RoomDoc.code=null;
+  if(P.bean){scene.remove(P.bean);P.bean=null;}
+  $('#chatLog').textContent='';$('#recap').hidden=true;$('#hud').hidden=true;
+  Setup.tab='wear';$('#title').hidden=false;renderSetup();
+}
+let exitArmed=0;
+function renderExit(){
+  const b=$('#exitBtn'),inPlay=G.phase!=='lobby'&&G.phase!=='recap',host=amHost();
+  b.textContent=inPlay&&host?(Date.now()<exitArmed?'Tap again to end':'🏠 End game'):G.phase==='recap'&&host?'🏠 Lobby':inPlay?'🚪 Leave':'🚪 Leave room';
+  b.classList.toggle('armed',Date.now()<exitArmed);
+}
+$('#exitBtn').addEventListener('click',()=>{
+  const inPlay=G.phase!=='lobby'&&G.phase!=='recap';
+  if(amHost()&&(inPlay||G.phase==='recap')){
+    if(inPlay&&Date.now()>exitArmed){exitArmed=Date.now()+3000;renderExit();setTimeout(renderExit,3100);return;}
+    exitArmed=0;G.phase='lobby';G.reveal=null;H.target=null;sys('The host ended the game.');commit();return;
+  }
+  leaveRoom();
+});
