@@ -35,7 +35,7 @@ write('docs/manifest.webmanifest', JSON.stringify({
   start_url: './',
   scope: './',
   display: 'fullscreen',
-  orientation: 'any',
+  orientation: 'landscape',
   background_color: '#FFD7A8',
   theme_color: '#FFD7A8',
   icons: [

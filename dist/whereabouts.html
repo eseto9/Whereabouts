@@ -38,7 +38,13 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px soli
 .btn.sea{background:var(--sea);color:#fff}
 .btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
 input[type=text],textarea{font:inherit;font-weight:800;border:3px solid var(--ink);border-radius:12px;padding:.5em .75em;background:#fff;color:#2B2040;width:100%}
-
+/* phones are played sideways: held upright, they get a nudge to turn */
+#rotate{display:none;position:fixed;inset:0;z-index:50;background:#FFD7A8;color:#2B2040;flex-direction:column;align-items:center;justify-content:center;gap:12px;text-align:center;padding:24px;font-family:var(--display);font-size:26px}
+#rotate p{margin:0}
+#rotate .phoneIcon{font-size:64px;animation:turn 1.8s ease-in-out infinite}
+@keyframes turn{0%,30%{transform:rotate(0)}60%,100%{transform:rotate(-90deg)}}
+@media (orientation:portrait) and (max-width:600px){ .touch #rotate{display:flex} }
+@media (prefers-reduced-motion:reduce){ #rotate .phoneIcon{animation:none;transform:rotate(-90deg)} }
 /* ---------- Title ---------- */
 #title{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:18px;padding:20px;overflow:auto;z-index:20}
 /* centred when it fits, scrollable from the very top when it doesn’t */
@@ -268,7 +274,7 @@ kbd{font-family:var(--body);font-weight:900;background:var(--paper);color:var(--
 @media (max-width:980px){
   .touch #clue{top:calc(84px + env(safe-area-inset-top,0px));bottom:auto}
   .touch #lobby{top:calc(84px + env(safe-area-inset-top,0px));bottom:auto;max-height:calc(100% - 414px);min-height:0}
-  .touch #clue.open{max-height:calc(100% - 414px)}
+  .touch #clue.open{max-height:max(160px,calc(100% - 414px))}
   .touch #tip{top:auto;bottom:calc(326px + env(safe-area-inset-bottom,0px))}
 }
 /* phones held sideways: clue top-left, tools and chat top-right, scores along the bottom */
@@ -277,6 +283,7 @@ kbd{font-family:var(--body);font-weight:900;background:var(--paper);color:var(--
   .touch #tools{top:calc(8px + env(safe-area-inset-top,0px))}
   .touch #clue{top:calc(8px + env(safe-area-inset-top,0px));bottom:auto;left:calc(16px + env(safe-area-inset-left,0px));transform:none;width:min(400px,calc(100% - 330px));max-height:calc(100% - 170px);overflow:auto;padding:6px 10px 6px;min-width:0}
   .touch #clue .main{font-size:15px;line-height:1.15}
+  .touch #clue.open{max-height:calc(100% - 150px)}
   .touch #clue ul{font-size:12.5px}
   .touch #lobby{top:calc(8px + env(safe-area-inset-top,0px));bottom:auto;left:calc(16px + env(safe-area-inset-left,0px));max-height:calc(100% - 180px);min-height:0}
   .touch #chat{top:calc(8px + env(safe-area-inset-top,0px));bottom:auto;left:auto;right:calc(16px + env(safe-area-inset-right,0px));width:min(270px,36%)}
@@ -295,6 +302,7 @@ kbd{font-family:var(--body);font-weight:900;background:var(--paper);color:var(--
 <canvas id="c" tabindex="0" aria-label="Whereabouts 3D town"></canvas>
 <div id="nogl" hidden>Whereabouts needs WebGL. Try a recent version of Chrome, Edge, Firefox or Safari on a computer.</div>
 <div id="loading">Building the town…</div>
+<div id="rotate" aria-live="polite"><div class="phoneIcon" aria-hidden="true">📱</div><p>Turn your phone sideways to play</p></div>
 
 <section id="title">
   <h1 class="wordmark" aria-label="Whereabouts"></h1>
