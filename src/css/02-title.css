@@ -65,3 +65,4 @@
 @media (max-width:560px){ .setup{grid-template-columns:1fr} .prevCol{position:static} .beanPrev{height:170px;width:122px} }
 /* short screens: let the preview scroll with the page instead of sliding over the buttons */
 @media (max-height:600px){ .prevCol{position:static} }
+.homeTip{background:var(--sun);color:#2B2040;border:2px solid var(--ink);border-radius:12px;padding:8px 12px}

@@ -22,6 +22,7 @@ function addChat(name,col,text,spy){
   const b=document.createElement('b');b.textContent=name+': ';b.style.color=col;d.appendChild(b);
   const s=document.createElement('span');s.textContent=text;if(spy)s.className='spyline';d.appendChild(s);
   log.appendChild(d);while(log.children.length>60)log.firstChild.remove();log.scrollTop=log.scrollHeight;
+  chatPeek();
 }
 function sys(text){const log=$('#chatLog');const d=document.createElement('div');d.className='sys';d.textContent=text;log.appendChild(d);while(log.children.length>60)log.firstChild.remove();log.scrollTop=log.scrollHeight;}
 const fmtT=ms=>{const s=Math.ceil(ms/1000);return Math.floor(s/60)+':'+String(s%60).padStart(2,'0');};

@@ -6,6 +6,7 @@ src/css/NN-*.css     styles, concatenated in filename order
 src/js/NN-*.js       game code, concatenated in filename order inside one IIFE
 tools/build.mjs      → dist/whereabouts.html (the Claude artifact) and docs/index.html (GitHub Pages)
 tools/dev-server.mjs local test server (live reload, source maps)
+tools/make-icons.mjs → docs/icon-*.png, the home-screen icons (run it after changing the icon)
 dev/mock-*.js        stand-ins for the artifact runtime: claude.use(), room, db and user
 ```
 
@@ -67,3 +68,6 @@ there, so multiplayer goes through a free public MQTT relay instead (see the end
 `src/js/17-net.js`; it falls back through three relays). Anyone who knows a room code could
 listen in on that room, so nothing private is sent. The daily board and the shared wallet
 still need Claude: on Pages, coins and bought clothes are saved in that browser only.
+
+On Pages the page also carries a web app manifest and the Apple home-screen tags, so
+"Add to Home Screen" opens it full screen without the browser bars.

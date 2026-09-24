@@ -136,10 +136,24 @@ kbd{font-family:var(--body);font-weight:900;background:var(--paper);color:var(--
 #clueMore{display:block;margin:4px auto 0;border:0;background:none;color:var(--muted);font:inherit;font-weight:900;font-size:13px;padding:2px 8px}
 .touch #clue:not(.open)[data-phase=clue] #clueHints li:not(:last-child){display:none}
 .touch #clue:not(.open)[data-phase=reveal] #clueHints li:not(:first-child){display:none}
-.touch #clue{padding:8px 12px 8px}
+.touch #clue{padding:6px 10px 6px;width:min(420px,calc(100% - 32px))}
 .touch #clue .phase{font-size:11px;margin-bottom:2px}
-.touch #clue .main{font-size:18px}
-.touch #clue ul{font-size:14px;margin-top:4px}
+.touch #clue .main{font-size:15px;line-height:1.15}
+.touch #clue ul{font-size:12.5px;margin-top:3px}
+.touch #clue li{padding:1px 0}
+.touch #clue .phase{display:none}
+.touch .pip{width:9px;height:9px}
+.touch .bar{width:80px;height:6px}
+.touch .pips small{font-size:11px}
+#clueMore{font-size:12px}
+/* phones: no tip, and the chat only shows when someone talks (briefly) or you open it */
+.touch #tip{display:none!important}
+.touch #chat{display:none}
+.touch #chat.open,.touch #chat.peek{display:flex}
+.touch #chat.peek #chatInput{display:none}
+.touch #chat.peek{animation:peekIn .25s ease-out}
+@keyframes peekIn{from{opacity:0;transform:translateY(6px)}}
+
 .touch .pips{margin-top:6px}
 .touch #clue.open{max-height:60vh;overflow:auto}
 @media (max-width:980px){
@@ -152,9 +166,9 @@ kbd{font-family:var(--body);font-weight:900;background:var(--paper);color:var(--
 @media (max-height:520px) and (orientation:landscape){
   .touch #compass{display:none}
   .touch #tools{top:calc(8px + env(safe-area-inset-top,0px))}
-  .touch #clue{top:calc(8px + env(safe-area-inset-top,0px));bottom:auto;left:calc(16px + env(safe-area-inset-left,0px));transform:none;width:min(460px,calc(100% - 330px));max-height:calc(100% - 170px);overflow:auto;padding:8px 12px 10px;min-width:0}
-  .touch #clue .main{font-size:18px}
-  .touch #clue ul{font-size:14px}
+  .touch #clue{top:calc(8px + env(safe-area-inset-top,0px));bottom:auto;left:calc(16px + env(safe-area-inset-left,0px));transform:none;width:min(400px,calc(100% - 330px));max-height:calc(100% - 170px);overflow:auto;padding:6px 10px 6px;min-width:0}
+  .touch #clue .main{font-size:15px;line-height:1.15}
+  .touch #clue ul{font-size:12.5px}
   .touch #lobby{top:calc(8px + env(safe-area-inset-top,0px));bottom:auto;left:calc(16px + env(safe-area-inset-left,0px));max-height:calc(100% - 180px);min-height:0}
   .touch #chat{top:calc(8px + env(safe-area-inset-top,0px));bottom:auto;left:auto;right:calc(16px + env(safe-area-inset-right,0px));width:min(270px,36%)}
   .touch #chatLog{max-height:62px}

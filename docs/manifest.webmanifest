@@ -1,0 +1,24 @@
+{
+  "name": "Whereabouts",
+  "short_name": "Whereabouts",
+  "description": "A co-op I spy game in a tiny 3D island town.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "fullscreen",
+  "orientation": "any",
+  "background_color": "#FFD7A8",
+  "theme_color": "#FFD7A8",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

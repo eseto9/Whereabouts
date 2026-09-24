@@ -4,6 +4,14 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Whereabouts</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" type="image/png" href="icon-192.png">
+<meta name="theme-color" content="#FFD7A8">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Whereabouts">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@700;800;900&display=swap" rel="stylesheet">
@@ -106,6 +114,7 @@ input[type=text],textarea{font:inherit;font-weight:800;border:3px solid var(--in
 @media (max-width:560px){ .setup{grid-template-columns:1fr} .prevCol{position:static} .beanPrev{height:170px;width:122px} }
 /* short screens: let the preview scroll with the page instead of sliding over the buttons */
 @media (max-height:600px){ .prevCol{position:static} }
+.homeTip{background:var(--sun);color:#2B2040;border:2px solid var(--ink);border-radius:12px;padding:8px 12px}
 /* ---------- HUD ---------- */
 #hud{position:fixed;inset:0;pointer-events:none;z-index:10}
 #hud > *{pointer-events:auto}
@@ -244,10 +253,24 @@ kbd{font-family:var(--body);font-weight:900;background:var(--paper);color:var(--
 #clueMore{display:block;margin:4px auto 0;border:0;background:none;color:var(--muted);font:inherit;font-weight:900;font-size:13px;padding:2px 8px}
 .touch #clue:not(.open)[data-phase=clue] #clueHints li:not(:last-child){display:none}
 .touch #clue:not(.open)[data-phase=reveal] #clueHints li:not(:first-child){display:none}
-.touch #clue{padding:8px 12px 8px}
+.touch #clue{padding:6px 10px 6px;width:min(420px,calc(100% - 32px))}
 .touch #clue .phase{font-size:11px;margin-bottom:2px}
-.touch #clue .main{font-size:18px}
-.touch #clue ul{font-size:14px;margin-top:4px}
+.touch #clue .main{font-size:15px;line-height:1.15}
+.touch #clue ul{font-size:12.5px;margin-top:3px}
+.touch #clue li{padding:1px 0}
+.touch #clue .phase{display:none}
+.touch .pip{width:9px;height:9px}
+.touch .bar{width:80px;height:6px}
+.touch .pips small{font-size:11px}
+#clueMore{font-size:12px}
+/* phones: no tip, and the chat only shows when someone talks (briefly) or you open it */
+.touch #tip{display:none!important}
+.touch #chat{display:none}
+.touch #chat.open,.touch #chat.peek{display:flex}
+.touch #chat.peek #chatInput{display:none}
+.touch #chat.peek{animation:peekIn .25s ease-out}
+@keyframes peekIn{from{opacity:0;transform:translateY(6px)}}
+
 .touch .pips{margin-top:6px}
 .touch #clue.open{max-height:60vh;overflow:auto}
 @media (max-width:980px){
@@ -260,9 +283,9 @@ kbd{font-family:var(--body);font-weight:900;background:var(--paper);color:var(--
 @media (max-height:520px) and (orientation:landscape){
   .touch #compass{display:none}
   .touch #tools{top:calc(8px + env(safe-area-inset-top,0px))}
-  .touch #clue{top:calc(8px + env(safe-area-inset-top,0px));bottom:auto;left:calc(16px + env(safe-area-inset-left,0px));transform:none;width:min(460px,calc(100% - 330px));max-height:calc(100% - 170px);overflow:auto;padding:8px 12px 10px;min-width:0}
-  .touch #clue .main{font-size:18px}
-  .touch #clue ul{font-size:14px}
+  .touch #clue{top:calc(8px + env(safe-area-inset-top,0px));bottom:auto;left:calc(16px + env(safe-area-inset-left,0px));transform:none;width:min(400px,calc(100% - 330px));max-height:calc(100% - 170px);overflow:auto;padding:6px 10px 6px;min-width:0}
+  .touch #clue .main{font-size:15px;line-height:1.15}
+  .touch #clue ul{font-size:12.5px}
   .touch #lobby{top:calc(8px + env(safe-area-inset-top,0px));bottom:auto;left:calc(16px + env(safe-area-inset-left,0px));max-height:calc(100% - 180px);min-height:0}
   .touch #chat{top:calc(8px + env(safe-area-inset-top,0px));bottom:auto;left:auto;right:calc(16px + env(safe-area-inset-right,0px));width:min(270px,36%)}
   .touch #chatLog{max-height:62px}
@@ -317,6 +340,8 @@ kbd{font-family:var(--body);font-weight:900;background:var(--paper);color:var(--
     <div class="joinrow wardrobe-only"><button class="btn" id="doneBtn">Back to the town</button></div>
     <p class="note" id="netNote">Connecting…</p>
     <p class="note" id="dailyNote" hidden></p>
+    <div class="joinrow"><button class="btn alt" id="fullBtn" hidden>⛶ Play full screen</button></div>
+    <p class="note homeTip" id="homeTip" hidden>📱 <b>Play full screen:</b> tap Safari’s Share button, then <b>Add to Home Screen</b>. Open Whereabouts from your home screen and Safari’s bars are gone.</p>
   </div>
 </section>
 
@@ -377,13 +402,8 @@ kbd{font-family:var(--body);font-weight:900;background:var(--paper);color:var(--
 
   <div id="touchUI" hidden>
     <div id="joy" role="application" aria-label="Walk: drag the stick"><div id="joyKnob"></div></div>
-    <div id="emoteRow" class="panel" hidden>
-      <button data-em="wave" aria-label="Wave">👋</button><button data-em="point" aria-label="Point">👉</button><button data-em="dance" aria-label="Dance">💃</button><button data-em="shrug" aria-label="Shrug">🤷</button><button data-em="cheer" aria-label="Cheer">🎉</button>
-    </div>
     <div id="tbtns">
-      <button class="tb" data-act="emote" aria-label="Emotes">😀</button>
       <button class="tb" data-act="chat" aria-label="Chat">💬</button>
-      <button class="tb" data-act="ping" aria-label="Ping the spot under the crosshair">📍</button>
       <button class="tb" data-act="bino" aria-label="Binoculars" aria-pressed="false">🔭</button>
       <button class="tb jump" data-act="jump" aria-label="Jump">Jump</button>
     </div>
@@ -2571,7 +2591,7 @@ function clearSpy(){if(Spy.target!=null&&W.list[Spy.target])setOutline(W.list[Sp
 
 /* =========================================================
    Phone & tablet controls: a thumbstick, drag to look,
-   tap to guess, and buttons for everything on the keyboard
+   tap to guess, and a few buttons (chat, binoculars, jump)
    ========================================================= */
 let touchMode=false;
 const joy={id:null,x:0,y:0};
@@ -2596,19 +2616,44 @@ joyEl.addEventListener('pointermove',e=>{e.stopPropagation();if(e.pointerId===jo
 joyEl.addEventListener('pointerup',joyEnd);
 joyEl.addEventListener('pointercancel',joyEnd);
 
-for(const el of [$('#tbtns'),$('#emoteRow')])el.addEventListener('pointerdown',e=>e.stopPropagation());
-$('#tbtns').addEventListener('click',e=>{
+// Jump and binoculars act the moment a finger lands: a phone never sends a "click" for a
+// second finger while the first is still on the stick.
+$('#tbtns').addEventListener('pointerdown',e=>{
+  e.stopPropagation();
   const b=e.target.closest('button');if(!b)return;audioInit();
   const a=b.dataset.act;
-  if(a==='jump')P.jumpReq=true;
-  else if(a==='bino')setBino(!P.bino);
-  else if(a==='ping')doPing();
-  else if(a==='emote')$('#emoteRow').hidden=!$('#emoteRow').hidden;
-  else if(a==='chat'){$('#chat').classList.add('open');$('#chatInput').focus();}
+  if(a==='jump'){e.preventDefault();P.jumpReq=true;}
+  else if(a==='bino'){e.preventDefault();setBino(!P.bino);}
 });
-$('#emoteRow').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;emote(b.dataset.em);$('#emoteRow').hidden=true;});
+// chat needs a real tap so the phone will bring up its keyboard
+$('#tbtns').addEventListener('click',e=>{
+  const b=e.target.closest('button');if(!b||b.dataset.act!=='chat')return;
+  const c=$('#chat');
+  if(c.classList.contains('open')){$('#chatInput').blur();return;}
+  c.classList.remove('peek');c.classList.add('open');$('#chatInput').focus();
+});
 $('#chatInput').addEventListener('blur',()=>$('#chat').classList.remove('open'));
 $('#clueMore').addEventListener('click',()=>{$('#clue').classList.toggle('open');renderAll();});
+
+// On phones the chat stays out of the way: someone's message shows for a few seconds, then hides.
+let peekT=null;
+function chatPeek(){
+  if(!touchMode)return;
+  const c=$('#chat');if(c.classList.contains('open'))return;
+  c.classList.add('peek');clearTimeout(peekT);peekT=setTimeout(()=>c.classList.remove('peek'),4500);
+}
+
+// Full screen: Android and tablets can do it from a button; iPhone Safari can't, but a
+// home-screen install opens without Safari's bars (see the tip on the title screen).
+{
+  const standalone=matchMedia('(display-mode: standalone)').matches||matchMedia('(display-mode: fullscreen)').matches||navigator.standalone===true;
+  const canFull=!!(document.fullscreenEnabled&&document.documentElement.requestFullscreen);
+  const iOS=/iPhone|iPod/.test(navigator.userAgent)||(/Macintosh/.test(navigator.userAgent)&&navigator.maxTouchPoints>1&&!canFull);
+  const fb=$('#fullBtn'),tip=$('#homeTip');
+  fb.hidden=standalone||!canFull||!touchMode;
+  fb.addEventListener('click',()=>{document.documentElement.requestFullscreen({navigationUI:'hide'}).then(()=>{try{screen.orientation.lock('landscape').catch(()=>{});}catch(e){}}).catch(()=>{});});
+  tip.hidden=standalone||!iOS||!!window.claude;
+}
 /* =========================================================
    FX: outlines, confetti, beacons, pings
    ========================================================= */
@@ -2706,6 +2751,7 @@ function addChat(name,col,text,spy){
   const b=document.createElement('b');b.textContent=name+': ';b.style.color=col;d.appendChild(b);
   const s=document.createElement('span');s.textContent=text;if(spy)s.className='spyline';d.appendChild(s);
   log.appendChild(d);while(log.children.length>60)log.firstChild.remove();log.scrollTop=log.scrollHeight;
+  chatPeek();
 }
 function sys(text){const log=$('#chatLog');const d=document.createElement('div');d.className='sys';d.textContent=text;log.appendChild(d);while(log.children.length>60)log.firstChild.remove();log.scrollTop=log.scrollHeight;}
 const fmtT=ms=>{const s=Math.ceil(ms/1000);return Math.floor(s/60)+':'+String(s%60).padStart(2,'0');};
