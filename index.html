@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Whereabouts</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@700;800;900&display=swap" rel="stylesheet">
+<!-- @styles -->
+</head>
+<body>
+<canvas id="c" tabindex="0" aria-label="Whereabouts 3D town"></canvas>
+<div id="nogl" hidden>Whereabouts needs WebGL. Try a recent version of Chrome, Edge, Firefox or Safari on a computer.</div>
+<div id="loading">Building the town…</div>
+<div id="rotate" aria-live="polite"><div class="phoneIcon" aria-hidden="true">📱</div><p>Turn your phone sideways to play</p></div>
+
+<section id="title">
+  <h1 class="wordmark" aria-label="Whereabouts"></h1>
+  <p class="tag">A co-op I spy game. Wander a tiny island town with friends and find the thing the clue describes.</p>
+  <div class="panel setup">
+    <div class="tabs" role="tablist" aria-label="Your look">
+      <button role="tab" id="tabWear" aria-controls="wearView" aria-selected="true">👕 Wardrobe</button>
+      <button role="tab" id="tabShop" aria-controls="shopView" aria-selected="false">🛍️ Shop</button>
+      <button role="tab" id="tabPedia" aria-controls="pediaView" aria-selected="false">📖 Townpedia</button>
+      <span class="wallet" title="Your coins">🪙 <b class="coinsN">0</b></span>
+    </div>
+    <div class="prevCol">
+      <canvas class="beanPrev" id="beanPrev" width="150" height="210" aria-hidden="true"></canvas>
+      <small id="tryNote" aria-live="polite"></small>
+      <button class="btn alt" id="surpriseBtn">🎲 Surprise me</button>
+    </div>
+    <div class="view" id="wearView" role="tabpanel" aria-labelledby="tabWear">
+      <div class="field"><label for="nameIn">Your name</label><input id="nameIn" type="text" maxlength="14" autocomplete="off" placeholder="Pip"></div>
+      <div class="field"><label>Wanderbean color</label><div class="swatches" id="swatches"></div></div>
+      <div class="field"><label>Top</label><div class="opts" id="topOpts"></div><div class="swatches sm" id="topTone"></div></div>
+      <div class="field"><label>Bottoms</label><div class="opts" id="botOpts"></div><div class="swatches sm" id="botTone"></div></div>
+      <div class="field"><label>Shoes</label><div class="opts" id="shoeOpts"></div><div class="swatches sm" id="shoeTone"></div></div>
+      <div class="field"><label>Extra</label><div class="opts" id="xOpts"></div></div>
+    </div>
+    <div class="view" id="shopView" role="tabpanel" aria-labelledby="tabShop" hidden>
+      <p class="shopIntro">Find things to earn coins. The faster you find it, the more you get. Tap a picture to try it on.</p>
+      <div id="shopList"></div>
+    </div>
+    <div class="view" id="pediaView" role="tabpanel" aria-labelledby="tabPedia" hidden>
+      <p class="shopIntro" id="pediaCount"></p>
+      <div class="chips" id="pediaAreas" role="group" aria-label="Area"></div>
+      <div class="pedia" id="pediaList"></div>
+    </div>
+    <p class="note" id="setupNote" aria-live="polite"></p>
+    <p class="note invite" id="inviteNote" hidden></p>
+    <div class="joinrow">
+      <button class="btn" id="createBtn">Start a room</button>
+      <span class="or">or</span>
+      <input id="codeIn" type="text" maxlength="4" placeholder="CODE" aria-label="Room code" autocomplete="off">
+      <button class="btn sea" id="joinBtn">Join</button>
+    </div>
+    <div class="joinrow wardrobe-only"><button class="btn" id="doneBtn">Back to the town</button></div>
+    <p class="note" id="netNote">Connecting…</p>
+    <p class="note" id="dailyNote" hidden></p>
+    <div class="joinrow"><button class="btn alt" id="fullBtn" hidden>⛶ Play full screen</button></div>
+    <div class="joinrow gfx"><span class="lbl">Graphics</span><div class="seg" id="gfxSeg"><button data-q="high">High</button><button data-q="low">Low</button></div></div>
+    <div class="joinrow gfx"><label class="lbl" for="sensIn">Look speed</label><input type="range" id="sensIn" min="0.5" max="3" step="0.1"><b id="sensVal"></b></div>
+    <p class="note homeTip" id="homeTip" hidden>📱 <b>Play full screen:</b> tap Safari’s Share button, then <b>Add to Home Screen</b>. Open Whereabouts from your home screen and Safari’s bars are gone.</p>
+  </div>
+</section>
+
+<div id="hud" hidden>
+  <div id="stats" class="panel">
+    <div class="stat"><small>Room</small><span class="code" id="roomCode">----</span></div>
+    <div class="stat"><small id="scoreLbl">Team score</small><b id="score">0</b></div>
+    <div class="stat"><small>Streak</small><b id="streakN">–</b></div>
+    <div class="stat"><small>Clue</small><b id="clueNum">–</b></div>
+    <div class="stat"><small>Time left</small><b id="timeLeft">–</b></div>
+    <button id="exitBtn" class="exitBtn" type="button"></button>
+  </div>
+  <div id="clue" class="panel" hidden>
+    <button id="clueToggle" type="button" aria-expanded="true" aria-label="Hide the clue">▴</button>
+    <div class="phase" id="cluePhase"></div>
+    <p class="main" id="clueMain"></p>
+    <ul id="clueHints"></ul>
+    <button id="clueMore" type="button" hidden></button>
+    <div class="pips" id="pips"></div>
+    <div id="hot" hidden><span aria-hidden="true">🧊</span><div class="hotbar"><i></i></div><span aria-hidden="true">🔥</span><small id="hotLbl" aria-live="polite"></small></div>
+  </div>
+  <div id="compass" class="panel" aria-hidden="true"></div>
+  <div id="tools"><button id="coinBtn" aria-label="Your coins. Open the shop">🪙 <b class="coinsN">0</b><span id="coinPop" aria-hidden="true"></span></button><button id="wardrobeBtn" aria-label="Change outfit">👕 Outfit</button><button id="mute" aria-label="Toggle sound">Sound on</button></div>
+  <div id="cross"></div>
+  <div id="toast" role="status" aria-live="polite"></div>
+  <div id="tip" class="panel" hidden></div>
+
+  <div id="lobby" class="panel" hidden>
+    <h2>Lobby</h2>
+    <p id="lobbyMsg">Walk around while you wait. Click anything to learn its name.</p>
+    <div class="row lobbyBtns"><button class="btn" id="startBtn">Start</button><button class="btn alt" id="inviteBtn">📨 Invite</button></div>
+    <p class="need" id="hideNeed" hidden>Hide & seek needs at least 2 players. Invite a friend!</p>
+    <div class="lbl">Game</div>
+    <div class="seg" id="huntSeg">
+      <button data-hunt="free">Free play</button>
+      <button data-hunt="daily">📅 Daily hunt</button>
+      <button data-hunt="hide">🙈 Hide &amp; seek</button>
+    </div>
+    <div id="freeOpts">
+      <div class="lbl">Play as</div>
+      <div class="seg" id="teamSeg">
+        <button data-teams="0">🤝 One team</button><button data-teams="1">🔴 vs 🔵</button>
+      </div>
+      <div class="lbl">Who writes the clues</div>
+      <div class="seg" id="modeSeg">
+        <button data-mode="game">The game</button>
+        <button data-mode="player">Players</button>
+        <button data-mode="alt">Take turns</button>
+      </div>
+      <div class="lbl">Clues per game</div>
+      <div class="seg" id="totalSeg">
+        <button data-total="6">6</button><button data-total="8">8</button><button data-total="10">10</button>
+      </div>
+      <div class="lbl">Difficulty</div>
+      <div class="seg" id="diffSeg">
+        <button data-diff="easy">Easy</button><button data-diff="normal">Normal</button><button data-diff="hard">Hard</button>
+      </div>
+    </div>
+    <div id="hideOpts" hidden>
+      <p>Everyone takes a turn hiding. The hider picks a disguise, like a barrel or a bush, and finds a spot while the others count. Seekers have 90 seconds to tap them.</p>
+    </div>
+    <div id="dailyOpts" hidden>
+      <p>Everyone gets the same 6 clues today. Your team’s best score goes on today’s board.</p>
+      <ol class="board" id="dailyBoard"></ol>
+    </div>
+  </div>
+
+  <div id="spy" class="panel" hidden></div>
+  <div id="disguise" class="panel" hidden><b>Your disguise</b><div class="chips" id="propBtns" role="group" aria-label="Disguise"></div><small>Hide next to things that look like you, and keep still!</small></div>
+  <div id="blind" hidden><div class="blindIn"><div class="bigN" id="blindN">25</div><p>🙈 Eyes closed! Counting while they hide…</p></div></div>
+
+  <div id="touchUI" hidden>
+    <div id="joy" role="application" aria-label="Walk: drag the stick"><div id="joyKnob"></div></div>
+    <div id="tbtns">
+      <button class="tb" data-act="chat" aria-label="Chat">💬</button>
+      <button class="tb jump" data-act="jump" aria-label="Jump">Jump</button>
+    </div>
+  </div>
+
+  <div id="chat">
+    <div id="chatLog" class="panel" aria-live="polite"></div>
+    <input id="chatInput" type="text" maxlength="160" placeholder="Press Enter to chat" autocomplete="off" aria-label="Chat message">
+  </div>
+
+  <div id="side" class="panel">
+    <h3>Wanderbeans</h3>
+    <ul id="plist"></ul>
+    <div class="keys">
+      <kbd>WASD</kbd><span>Walk (Shift to run)</span>
+      <kbd>Mouse</kbd><span>Look around</span>
+      <kbd>Click</kbd><span>Guess what's under the crosshair</span>
+      <kbd>Q</kbd><span>Ping a spot for your team</span>
+      <kbd>Space</kbd><span>Jump</span>
+      <kbd>1–5</kbd><span>Wave, point, dance, shrug, cheer</span>
+      <kbd>Enter</kbd><span>Chat</span>
+      <kbd>M</kbd><span>Sound on/off</span>
+    </div>
+  </div>
+</div>
+
+<div id="recap" hidden><div class="panel" id="recapBody"></div></div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.149.0/build/three.min.js"></script>
+<!-- @app -->
+</body>
+</html>
