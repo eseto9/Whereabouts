@@ -1,6 +1,6 @@
 # Whereabouts
 
-```
+
 To upload: on GitHub, open the docs folder, click Add file → Upload files, drag in index.html, then Commit changes. Check the Actions tab for the green check.
 
 ```
