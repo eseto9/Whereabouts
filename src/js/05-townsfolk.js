@@ -24,8 +24,8 @@ function pigeonMesh(c){
   g.add(at(sph(0.03,'#1D1533',5,4,{ol:false,shadow:false}),-0.07,0.48,0.3));
   return g;
 }
-function catMesh(){
-  const g=new THREE.Group(); const c='#F29A38';
+function catMesh(col){
+  const g=new THREE.Group(); const c=col||'#F29A38';
   g.add(scl(at(sph(0.32,c,10,8),0,0.34,0),0.9,0.8,1.5));
   g.add(at(sph(0.25,c,10,8),0,0.62,0.45));
   for(const s of[-1,1]){g.add(rot(at(cone(0.09,0.18,c,4),0.13*s,0.85,0.45),0,0,-0.2*s));g.add(at(sph(0.04,'#1D1533',6,5,{ol:false,shadow:false}),0.09*s,0.66,0.67));}

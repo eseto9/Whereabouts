@@ -24,7 +24,7 @@ function presence(patch){Object.assign(Net.myPres,patch);if(Net.room)Net.room.pr
 let lastPres=0;
 function sendPresence(force){
   if(!myCode)return;const t=performance.now();if(!force&&t-lastPres<80)return;lastPres=t;
-  presence({x:Math.round(P.pos.x*100)/100,y:Math.round(P.pos.y*100)/100,z:Math.round(P.pos.z*100)/100,ry:Math.round(P.face*100)/100,an:P.an,em:P.em||'',emAt:P.emAt||0});
+  presence({x:Math.round(P.pos.x*100)/100,y:Math.round(P.pos.y*100)/100,z:Math.round(P.pos.z*100)/100,ry:Math.round(P.face*100)/100,an:P.an,em:P.em||'',emAt:P.emAt||0,hb:P.board?1:0,tk:P.tk||0});
 }
 function emit(topic,data){
   data=Object.assign({code:myCode},data);

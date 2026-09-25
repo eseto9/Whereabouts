@@ -23,7 +23,7 @@ const clients = new Set();
 const DEV = path.join(ROOT, 'dev');
 function snapshot() {
   const out = [];
-  const walk = d => { for (const e of fs.readdirSync(d, { withFileTypes: true })) { const f = path.join(d, e.name); if (e.isDirectory()) walk(f); else { try { out.push(f + '\0' + fs.readFileSync(f, 'utf8')); } catch (err) {} } } };
+  const walk = d => { for (const e of fs.readdirSync(d, { withFileTypes: true })) { const f = path.join(d, e.name); if (e.isDirectory()) { if (e.name !== '.shots') walk(f); } else { try { out.push(f + '\0' + fs.readFileSync(f, 'utf8')); } catch (err) {} } } };
   walk(SRC); walk(DEV);
   return out.join('\0\0');
 }
@@ -47,6 +47,15 @@ function send(res, status, type, body) {
 
 http.createServer((req, res) => {
   const url = new URL(req.url, 'http://x');
+  // dev only: save a frame the page posts (see snap() in dev/check-layout.js) to dev/.shots/<name>.png
+  if (req.method === 'POST' && url.pathname === '/__shot') {
+    const chunks = []; req.on('data', c => chunks.push(c)); req.on('end', () => {
+      const dir = path.join(ROOT, 'dev', '.shots'); fs.mkdirSync(dir, { recursive: true });
+      const name = (url.searchParams.get('name') || 'shot').replace(/[^\w-]/g, '');
+      fs.writeFileSync(path.join(dir, name + '.png'), Buffer.from(Buffer.concat(chunks).toString().replace(/^data:image\/png;base64,/, ''), 'base64'));
+      res.end('ok'); });
+    return;
+  }
   const p = decodeURIComponent(url.pathname);
   try {
     if (p === '/' || p === '/index.html') {

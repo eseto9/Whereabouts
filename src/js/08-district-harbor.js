@@ -36,11 +36,11 @@ function buildHarbor(){
    g.add(at(box(6,3.4,4.4,'#8FB8DE'),0,1.7,0));
    const r=mk(prismGeo(6.6,1.8,5),'#3B5B8C');r.position.y=3.4;g.add(r);
    g.add(at(box(1.2,2,0.2,'#8A5A44',{w:0.03}),-1.4,1,2.25));
-   const s=signBox("Salty's",3.4,0.8,'#FFFFFF','#2B2040');s.position.set(1.2,2.8,2.3);g.add(s);
+   const s=signBox('The Plaice to Be',3.4,0.8,'#FFFFFF','#2B2040');s.position.set(1.2,2.8,2.3);g.add(s);
    const fish=new THREE.Group();fish.add(scl(sph(0.5,'#FF6FB5',10,8,{w:0.04}),2,1,0.4));fish.add(rot(at(cone(0.45,0.6,'#FF6FB5',3,{w:0.04}),-1.25,0,0),0,0,Math.PI/2));
    fish.position.set(0,5.9,0);g.add(fish);
    onGround(g,-12,44); g.rotation.y=0.25;
-   F(g,{k:'shack',n:"Salty's fish shack",c:['blue','pink'],s:'boxy',m:'wood',v:'weathered but happy',snd:'sizzle',u:'grab fish and chips at',e:'🐟🍟🏚️'});
+   F(g,{k:'shack',n:'the Plaice to Be fish shack',c:['blue','pink'],s:'boxy',m:'wood',v:'weathered but happy',snd:'sizzle',u:'grab fish and chips at',e:'🐟🍟🏚️'});
    rect(-12,44,6.4,5);
    W.movers.push(t=>{fish.rotation.y=Math.sin(t*1.5)*0.4;});}
 
@@ -103,7 +103,8 @@ function buildHarbor(){
     const hull=new THREE.Group();hull.add(scl(at(sph(1,'#FFFFFF',12,6),0,0,0),1,0.5,2.6));hull.add(at(box(1.6,0.1,4,'#C8935E',{w:0.02}),0,0.35,0));g.add(hull);
     g.add(at(cyl(0.07,0.07,5,'#8B5E3C',6),0,2.8,0.2));
     const sh=new THREE.Shape();sh.moveTo(0,0);sh.lineTo(0,4.2);sh.lineTo(2,0);sh.lineTo(0,0);
-    const sail=mk(new THREE.ShapeGeometry(sh),0,{mat:new THREE.MeshToonMaterial({color:col,side:THREE.DoubleSide,gradientMap:gradTex}),w:0.03});
+    const sg=new THREE.ShapeGeometry(sh),sail=new THREE.Mesh(sg,new THREE.MeshToonMaterial({color:col,side:THREE.DoubleSide,gradientMap:gradTex}));sail.castShadow=true;
+    sail.add(new THREE.LineSegments(new THREE.EdgesGeometry(sg),new THREE.LineBasicMaterial({color:0x2B2040})));
     sail.rotation.y=-Math.PI/2;sail.position.set(0,0.6,0.35);g.add(sail);
     scene.add(g);
     F(g,{k:'sailboat',n:`the ${cn}-sailed boat`,c:[cn,'white'],s:'pointy',m:'wood',v:'breezy',snd:'flap',u:'sail away on',e:'⛵🌬️🌊',mv:true});

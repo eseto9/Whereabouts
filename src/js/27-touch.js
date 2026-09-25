@@ -25,30 +25,32 @@ joyEl.addEventListener('pointermove',e=>{e.stopPropagation();if(e.pointerId===jo
 joyEl.addEventListener('pointerup',joyEnd);
 joyEl.addEventListener('pointercancel',joyEnd);
 
-// Jump acts the moment a finger lands: a phone never sends a "click" for a
+// The board button acts the moment a finger lands: a phone never sends a "click" for a
 // second finger while the first is still on the stick.
 $('#tbtns').addEventListener('pointerdown',e=>{
   e.stopPropagation();
   const b=e.target.closest('button');if(!b)return;audioInit();
   const a=b.dataset.act;
-  if(a==='jump'){e.preventDefault();P.jumpReq=true;}
+  if(a==='board'){e.preventDefault();rideTap();}
 });
-// chat needs a real tap so the phone will bring up its keyboard
-$('#tbtns').addEventListener('click',e=>{
-  const b=e.target.closest('button');if(!b||b.dataset.act!=='chat')return;
-  const c=$('#chat');
-  if(c.classList.contains('open')){$('#chatInput').blur();return;}
-  c.classList.remove('peek');c.classList.add('open');$('#chatInput').focus();
-});
-$('#chatInput').addEventListener('blur',()=>$('#chat').classList.remove('open'));
+$('#mapBtn').addEventListener('click',()=>setMap(!MAP.open));
+// chat sits top-right on phones: the button opens it (a real tap, so the keyboard can come up),
+// tapping the last line opens the whole chat to read without the keyboard
+function chatOpen(on,typing){
+  const c=$('#chat');c.classList.toggle('open',on);$('#chatBtn').setAttribute('aria-pressed',on);
+  if(on){$('#chatLast').classList.remove('on');const l=$('#chatLog');l.scrollTop=l.scrollHeight;if(typing)$('#chatInput').focus();}else $('#chatInput').blur();
+}
+$('#chatBtn').addEventListener('click',()=>chatOpen(!$('#chat').classList.contains('open'),true));
+$('#chatLast').addEventListener('click',()=>chatOpen(true,false));
+canvas.addEventListener('pointerdown',()=>{if(touchMode&&$('#chat').classList.contains('open')&&document.activeElement!==$('#chatInput'))chatOpen(false);});
 $('#clueMore').addEventListener('click',()=>{$('#clue').classList.toggle('open');renderAll();});
 
 // On phones the chat stays out of the way: someone's message shows for a few seconds, then hides.
 let peekT=null;
-function chatPeek(){
+function chatPeek(name,text){
   if(!touchMode)return;
   const c=$('#chat');if(c.classList.contains('open'))return;
-  c.classList.add('peek');clearTimeout(peekT);peekT=setTimeout(()=>c.classList.remove('peek'),4500);
+  const l=$('#chatLast');l.textContent=`${name}: ${text}`;l.classList.add('on');clearTimeout(peekT);peekT=setTimeout(()=>l.classList.remove('on'),8000);
 }
 
 // Full screen: Android and tablets can do it from a button; iPhone Safari can't, but a
@@ -59,6 +61,10 @@ function chatPeek(){
   const iOS=/iPhone|iPod/.test(navigator.userAgent)||(/Macintosh/.test(navigator.userAgent)&&navigator.maxTouchPoints>1&&!canFull);
   const fb=$('#fullBtn'),tip=$('#homeTip');
   fb.hidden=standalone||!canFull||!touchMode;
+  // sideways without asking: the installed app opens sideways (manifest), and where the phone
+  // allows it (Android), the first tap locks the screen sideways too
+  const lockSide=()=>{try{const o=screen.orientation;if(o&&o.lock)o.lock('landscape').catch(()=>{});}catch(e){}};
+  addEventListener('pointerdown',lockSide,{once:true});
   fb.addEventListener('click',()=>{document.documentElement.requestFullscreen({navigationUI:'hide'}).then(()=>{try{screen.orientation.lock('landscape').catch(()=>{});}catch(e){}}).catch(()=>{});});
   tip.hidden=standalone||!iOS||!!window.claude;
 }

@@ -2,7 +2,7 @@
    Input
    ========================================================= */
 let locked=false,noLock=false,suppressClick=false,dragging=null;
-const SENS=0.0024;
+const SENS=0.00432;   // 1× here is what used to be 1.8×
 // look speed, set on the title screen (0.5× to 3×), kept per device
 const Look={mult:1};
 try{const v=parseFloat(localStorage.getItem('wb.sens'));if(v>=0.5&&v<=3)Look.mult=v;}catch(e){}
@@ -54,6 +54,10 @@ window.addEventListener('keydown',e=>{
   if(e.code==='Enter'){e.preventDefault();if(locked)document.exitPointerLock();$('#chatInput').focus();}
   else if(e.code==='KeyQ') doPing();
   else if(e.code==='KeyM') toggleMute();
+  else if(e.code==='KeyB') rideTap();
+  else if(e.code==='KeyT') doTrick();
+  else if(e.code==='Tab'){e.preventDefault();setMap(!MAP.open);}
+  else if(e.code==='Escape'&&MAP.open) setMap(false);
   else if(e.code==='KeyH') $('#side').hidden=!$('#side').hidden;
   else if(/^Digit[1-5]$/.test(e.code)) emote(['wave','point','dance','shrug','cheer'][+e.code.slice(5)-1]);
 });

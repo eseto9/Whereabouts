@@ -48,7 +48,7 @@ function buildPark(){
    onGround(g,-44,16);g.rotation.y=0.4;
    F(g,{k:'slide',n:'the red slide',c:['red','blue'],s:'slopey',m:'plastic',v:'thrilled every single time',snd:'wheee',u:'zoom down',e:'🛝😆⬇️'});rect(-44,16,2,2);}
   {const g=new THREE.Group();
-   for(const s of[-1,1]){g.add(rot(at(cyl(0.07,0.07,3,'#FFD23F',6),1.8*s,1.4,0.5),0.35,0,0));g.add(rot(at(cyl(0.07,0.07,3,'#FFD23F',6),1.8*s,1.4,-0.5),-0.35,0,0));}
+   for(const s of[-1,1]){g.add(rot(at(cyl(0.07,0.07,3,'#FFD23F',6),1.8*s,1.4,0.5),-0.35,0,0));g.add(rot(at(cyl(0.07,0.07,3,'#FFD23F',6),1.8*s,1.4,-0.5),0.35,0,0));}
    g.add(rot(at(cyl(0.08,0.08,3.8,'#FFD23F',6),0,2.8,0),0,0,Math.PI/2));
    const swings=[-0.8,0.8].map((x,i)=>{const p=new THREE.Group();p.position.set(x,2.8,0);
      p.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints([new V3(-0.25,0,0),new V3(-0.25,-2.1,0),new V3(0.25,0,0),new V3(0.25,-2.1,0)]),new THREE.LineBasicMaterial({color:0x2B2040})));

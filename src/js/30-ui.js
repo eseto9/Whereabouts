@@ -23,7 +23,7 @@ function addChat(name,col,text,spy){
   const b=document.createElement('b');b.textContent=name+': ';b.style.color=col;d.appendChild(b);
   const s=document.createElement('span');s.textContent=text;if(spy)s.className='spyline';d.appendChild(s);
   log.appendChild(d);while(log.children.length>60)log.firstChild.remove();log.scrollTop=log.scrollHeight;
-  chatPeek();
+  chatPeek(name,text);
 }
 function sys(text){const log=$('#chatLog');const d=document.createElement('div');d.className='sys';d.textContent=text;log.appendChild(d);while(log.children.length>60)log.firstChild.remove();log.scrollTop=log.scrollHeight;}
 const fmtT=ms=>{const s=Math.ceil(ms/1000);return Math.floor(s/60)+':'+String(s%60).padStart(2,'0');};
@@ -46,17 +46,22 @@ function renderAll(){
   if(G.phase==='pick'&&(seen.phase!=='pick'||G.r!==seen.r)){if(isSpy){sfx.spy();toast('You’re the Spy!\nClick something to pick it.',2600);}}
   if(G.phase==='clue'&&seen.phase==='pick'&&G.r===seen.r){sfx.clue();toast(`${G.spyName} spies something…`,1500);}
   if(G.phase==='clue'&&G.r===seen.r&&G.lines.length>seen.n&&seen.phase==='clue')sfx.hint();
+  if(G.phase==='clue'&&seen.phase==='clue'&&G.kind==='game'&&G.hot!==seen.hot){sfx.hint();toast(G.hot?'🌡️ Hot/cold is on':'🌡️ Hot/cold is off',1500);}
+  seen.hot=G.hot;
   if(G.phase==='reveal'&&seen.phase!=='reveal'){if(G.reveal&&!G.reveal.found&&!G.reveal.hs){sfx.sad();toast('Time’s up!',1600);buzz(60);}}
+  // the host's layout for this game
+  if(G.seed!==seen.seed){shuffleTown(G.seed);if(G.seed&&G.phase!=='lobby')sys('🔀 Things have moved around town this game. Nothing is quite where you remember!');seen.seed=G.seed;}
   const rid=G.phase==='reveal'&&G.reveal?G.reveal.id:null;
   if(rid!==seen.revealId)setRevealHighlight(rid);
   if(G.phase==='reveal'&&G.reveal&&!G.reveal.found&&G.reveal.id==null&&isSpy&&Spy.r===G.r&&Spy.target!=null&&!seen.spySent){seen.spySent=true;emit('wb.result',{r:G.r,reveal:true,id:Spy.target});}
-  if(G.phase==='recap'&&seen.phase!=='recap'){sfx.fanfare();if(G.found)burst(new V3(P.pos.x,P.pos.y+2,P.pos.z),140);}
-  if(G.phase==='reveal'&&G.reveal&&G.reveal.found&&(G.streak||0)>=2&&G.streak!==seen.streak)setTimeout(()=>toast(`🔥 ${G.streak} in a row!`,1500),1300);
+  if(G.phase==='reveal'&&(seen.phase!=='reveal'||G.r!==seen.r))roundCard(true);
+  else if(G.phase!=='reveal')roundCard(false);else if(!$('#roundCard').hidden)roundCard(null);
+  if(G.phase==='recap'&&seen.phase!=='recap'){sfx.fanfare();if(G.found)burst(new V3(P.pos.x,P.pos.y+2,P.pos.z),140);if(seen.played)gameDone();}
   // coins: the finder gets paid for speed, everyone else who was hunting gets a small share
   if(G.phase==='reveal'&&G.reveal&&(G.reveal.found||(G.reveal.hs&&G.reveal.gp))&&seen.played&&seen.paidR!==G.r){
     seen.paidR=G.r;const mine=G.reveal.gp===myPeer();const c=mine?G.reveal.coins:TEAM_SHARE;
     earn(c);seen.earned=(seen.earned||0)+c;if(!G.reveal.hs)pediaAdd(G.reveal.name);
-    if(mine&&!G.reveal.hs)buzz([30,40,60]);
+    if(mine&&!G.reveal.hs){buzz([30,40,60]);lbRecord(G.reveal.pts);if(G.reveal.secs<15)Wallet.stats.quick++;bumpStat('finds');}
     sys(mine?(G.reveal.hs?(G.reveal.found?`You earned 🪙 ${c} for finding ${G.reveal.name}.`:`You earned 🪙 ${c} for staying hidden.`):`You earned 🪙 ${c} for finding it in ${G.reveal.secs}s.`):`You earned 🪙 ${c} as your share.`);
   }
   if(G.phase==='clue'||G.phase==='pick'||G.phase==='hide'||G.phase==='seek')seen.played=true;else if(G.phase==='lobby'){seen.played=false;seen.earned=0;}
@@ -68,13 +73,13 @@ function renderAll(){
 
   // HUD
   $('#roomCode').textContent=myCode||'----';
-  $('#score').textContent=G.hs?(G.pts[me]||0):G.teams?`🔴${G.ts.r||0} 🔵${G.ts.b||0}`:(G.score||0);
-  $('#scoreLbl').textContent=G.hs?'Your points':G.teams?'Team scores':'Team score';
-  $('#streakN').textContent=(G.streak||0)>=2?'🔥'+G.streak:(G.streak||'–');
-  $('#clueNum').textContent=(G.phase==='lobby')?'–':(G.phase==='recap'?`${G.total}/${G.total}`:`${Math.min(G.idx+1,G.total)}/${G.total}`);
+  $('#score').textContent=G.hs?(G.pts[me]||0):G.teams?`🔴${G.tf.r||0} 🔵${G.tf.b||0}`:(G.score||0);
+  $('#scoreLbl').textContent=G.hs?'Yours':G.teams?`First to ${TEAM_GOAL}`:'Score';
+  $('#clueNum').textContent=(G.phase==='lobby')?'–':G.teams?String(Math.min(G.idx+1,G.total)):(G.phase==='recap'?`${G.total}/${G.total}`:`${Math.min(G.idx+1,G.total)}/${G.total}`);
+  const clueOf=()=>G.teams?`Clue ${G.idx+1} · first to ${TEAM_GOAL} finds wins`:`Clue ${G.idx+1} of ${G.total}`;
   // clue card
   const card=$('#clue'),inPlay=G.phase==='pick'||G.phase==='clue'||G.phase==='reveal'||G.phase==='hide'||G.phase==='seek';
-  card.hidden=!inPlay;if(G.r!==seen.cardR){card.classList.remove('open','min');seen.cardR=G.r;}
+  card.hidden=false;card.classList.toggle('noclue',!inPlay);if(G.r!==seen.cardR){card.classList.remove('open','min');seen.cardR=G.r;}
   const tg=$('#clueToggle'),mini=card.classList.contains('min');tg.textContent=mini?'💡 Clue ▾':'▴';tg.setAttribute('aria-expanded',!mini);tg.setAttribute('aria-label',mini?'Show the clue':'Hide the clue');
   if(inPlay){
     const ph=$('#cluePhase'),mn=$('#clueMain'),ul=$('#clueHints');ul.textContent='';
@@ -83,10 +88,10 @@ function renderAll(){
         :(me_?'Stay hidden! Keep still near things that look like you.':`Find ${G.hiderName}! They’re disguised as something in town. Tap them to catch them.`);}
     else if(G.hs){ph.textContent=`Round ${G.idx+1} of ${G.total}`;const r=G.reveal||{};
       mn.textContent=r.found?`${r.by} found ${r.name}! +${r.pts}`:r.why==='time'?`${r.name} stayed hidden! +${r.pts}`:`${r.name} left the game.`;}
-    else if(G.phase==='pick'){ph.textContent=`Clue ${G.idx+1} of ${G.total}`;mn.textContent=isSpy?'You’re the Spy! Aim at anything and click to pick it.':`${G.spyName} is picking something to spy…`;}
-    else if(G.phase==='clue'){ph.textContent=G.kind==='player'?`Clue ${G.idx+1} of ${G.total}, spied by ${G.spyName}`:`Clue ${G.idx+1} of ${G.total}`;mn.textContent=G.lines[0]||'';
+    else if(G.phase==='pick'){ph.textContent=clueOf();mn.textContent=isSpy?'You’re the Spy! Aim at anything and click to pick it.':`${G.spyName} is picking something to spy…`;}
+    else if(G.phase==='clue'){ph.textContent=G.kind==='player'?`${clueOf()}, spied by ${G.spyName}`:clueOf();mn.textContent=G.lines[0]||'';
       G.lines.slice(1).forEach((l,i,arr)=>{const li=document.createElement('li');li.textContent=l;if(i>=arr.length-newHints)li.className='new';ul.appendChild(li);});}
-    else{ph.textContent=`Clue ${G.idx+1} of ${G.total}`;const r=G.reveal||{};
+    else{ph.textContent=clueOf();const r=G.reveal||{};
       mn.textContent=r.found?`${r.by}${r.team?' '+(r.team==='r'?'🔴':'🔵'):''} found it! +${r.pts}`:'Nobody found it this time.';
       const li=document.createElement('li');li.textContent=r.name?`It was ${r.name}.`:'The Spy is revealing it…';ul.appendChild(li);
       if(r.found&&Array.isArray(r.bonus)&&r.bonus.length){const lb=document.createElement('li');lb.className='bonus';lb.textContent=r.bonus.join(' · ');ul.appendChild(lb);}
@@ -108,15 +113,48 @@ function renderAll(){
     for(const b of $('#diffSeg').children){b.setAttribute('aria-pressed',b.dataset.diff===G.diff);b.disabled=!host;}
     const hunt=G.hs?'hide':G.daily?'daily':'free';
     for(const b of $('#huntSeg').children){b.setAttribute('aria-pressed',b.dataset.hunt===hunt);b.disabled=!host;}
+    for(const b of $('#shufSeg').children){b.setAttribute('aria-pressed',(b.dataset.shuf==='1')===G.shuf);b.disabled=!host;}
     for(const b of $('#teamSeg').children){b.setAttribute('aria-pressed',(b.dataset.teams==='1')===G.teams);b.disabled=!host;}
     for(const b of $('#modeSeg').children)b.disabled=!host||G.teams;
+    $('#modeOpts').hidden=G.teams;$('#totalOpts').hidden=G.teams;$('#teamGoal').hidden=!G.teams;renderTeams(host);
     $('#freeOpts').hidden=hunt!=='free';$('#dailyOpts').hidden=hunt!=='daily';$('#hideOpts').hidden=hunt!=='hide';
     $('#startBtn').disabled=G.hs&&n<2;$('#hideNeed').hidden=!(G.hs&&n<2);
-    if(G.daily){dailyWatch(G.daily);renderBoard($('#dailyBoard'));}
+    if(G.daily){dailyWatchAny(G.daily);renderBoard($('#dailyBoard'));}
     $('#startBtn').hidden=!host;
   }
   renderSpy();renderRecap();renderPlayers();updateTip();renderExit();
+  {const rb=document.querySelector('[data-act=board]'),r=RIDES.find(o=>o[0]===rideOf(myFit));if(rb&&r&&rb.dataset.r!==r[0]){rb.dataset.r=r[0];rb.textContent=r[2]+' Ride';rb.setAttribute('aria-label',r[1]);}}
 }
+// the round card: a pop-up with who found it and how fast (or what it was), with confetti
+let rcT=null;
+function roundCard(open){
+  const el=$('#roundCard');
+  if(open===false){if(!el.hidden){el.hidden=true;clearTimeout(rcT);}return;}
+  const r=G.reveal||{},mine=r.gp&&r.gp===myPeer(),o=r.id!=null?W.list[r.id]:null;
+  const cap=s=>s?s.charAt(0).toUpperCase()+s.slice(1):s;
+  let top,big,sub='',chips=[];
+  if(G.hs){top=r.found?(mine?'🎉 You found them!':`🎉 ${r.by} found them!`):r.why==='time'?'🙈 Still hidden!':'👋 The hider left';
+    big=r.found?`${r.name} is caught`:r.why==='time'?`${r.name} wins the round`:r.name||'';sub=r.pts?`+${r.pts} points`:'';}
+  else if(r.found){
+    const others=G.finds.filter(f=>f.p&&Number.isFinite(f.s));const fastest=others.length>1&&others.every(f=>f.s>=r.secs);
+    top=mine?'🎉 You found it!':`🎉 ${r.by}${r.team?' '+(r.team==='r'?'🔴':'🔵'):''} found it!`;
+    big=(o&&o.e?firstGlyph(o.e)+' ':'')+cap(r.name||'');
+    sub=`⏱ ${r.secs}s · +${r.pts} points`+(fastest?' · 🏅 Fastest this game!':'');
+    chips=(r.bonus||[]).slice();if(r.coins)chips.push(mine?`🪙 +${r.coins} for you`:`🪙 +${TEAM_SHARE} for you`);
+  }else{top='⏰ Time’s up!';big=r.name?`It was ${r.name}`:'The Spy is revealing it…';sub='Follow the ⭐ beacon to see where it was.';}
+  $('#rcTop').textContent=top;$('#rcBig').textContent=big;$('#rcSub').textContent=sub;
+  const ch=$('#rcChips');ch.textContent='';for(const c of chips){const s=document.createElement('span');s.textContent=c;ch.appendChild(s);}
+  el.classList.toggle('good',!!r.found);el.classList.toggle('mine',!!mine);
+  if(open){
+    el.hidden=false;el.classList.remove('pop');void el.offsetWidth;el.classList.add('pop');
+    const cf=el.querySelector('.rcConf');cf.textContent='';
+    if(r.found){const cols=['#FF5D73','#FFD23F','#3DDC97','#4D96FF','#9B5DE5','#FF9F1C'];
+      for(let i=0;i<34;i++){const s=document.createElement('i');s.style.left=(Math.random()*100)+'%';s.style.background=cols[i%cols.length];
+        s.style.animationDelay=(Math.random()*0.35)+'s';s.style.animationDuration=(1.1+Math.random()*0.9)+'s';s.style.setProperty('--dx',(Math.random()*80-40)+'px');s.style.setProperty('--r',(Math.random()*720-360)+'deg');cf.appendChild(s);}}
+    clearTimeout(rcT);rcT=setTimeout(()=>{el.hidden=true;},r.found?3600:4600);
+  }
+}
+$('#roundCard').addEventListener('click',()=>{$('#roundCard').hidden=true;clearTimeout(rcT);});
 function renderPips(){
   const el=$('#pips');el.textContent='';
   if(G.phase==='clue'&&G.kind==='game'){for(let i=0;i<diffOf().lines;i++){const p=document.createElement('span');p.className='pip'+(i<G.lines.length?' on':'');el.appendChild(p);}}
@@ -127,15 +165,20 @@ function updateHUDTimers(){
   const inPlay=G.phase==='pick'||G.phase==='clue'||G.phase==='reveal'||G.phase==='hide'||G.phase==='seek';
   // hide & seek: seekers see nothing but a countdown while the hider hides
   const bl=$('#blind'),blind=frozenSeeker();bl.hidden=!blind;if(blind)$('#blindN').textContent=Math.ceil(liveLeft('roundLeft')/1000);
-  // Easy: warmer/colder, from how far you are from the answer
-  const hot=$('#hot'),showHot=G.phase==='clue'&&!!G.tp;hot.hidden=!showHot;
+  // warmer/colder, from how far you are from the answer: the host switches it on or off for everyone
+  const gameClue=G.phase==='clue'&&!!G.tp&&G.kind==='game';
+  const hot=$('#hot'),showHot=gameClue&&G.hot;hot.hidden=!showHot;
+  const hb=$('#hotBtn');hb.hidden=!(gameClue&&amHost()&&!G.daily);
+  if(!hb.hidden){const t=G.hot?'🌡️ Hot/cold: on (tap to turn off)':'🌡️ Hot/cold: off (tap to turn on)';if(hb.textContent!==t){hb.textContent=t;hb.setAttribute('aria-pressed',G.hot);}}
   if(showHot){const d=Math.hypot(P.pos.x-G.tp[0],P.pos.z-G.tp[1]),heat=clamp(1-(d-3)/50,0,1);
     const i=hot.querySelector('i');i.style.width=(heat*100)+'%';i.style.background=`hsl(${Math.round(200-200*heat)},85%,55%)`;
     const w=heat>0.85?'Boiling!':heat>0.6?'Hot':heat>0.35?'Warm':'Cold';if($('#hotLbl').textContent!==w)$('#hotLbl').textContent=w;}
   $('#timeLeft').textContent=inPlay?fmtT(liveLeft('sessLeft')):'–';
   const bar=document.querySelector('#pips .bar i'),lab=$('#roundLbl');if(!bar||!lab)return;
-  if(G.phase==='clue'&&G.kind==='game'&&G.lines.length<diffOf().lines){const h=liveLeft('hintIn');bar.style.width=(100*(1-h/diffOf().hint))+'%';lab.textContent=`next hint in ${Math.ceil(h/1000)}s`;}
-  else if(G.phase==='clue'){const r=liveLeft('roundLeft');bar.style.width=(100*r/(G.kind==='game'?diffOf().round:PROUND_MS))+'%';lab.textContent=`${Math.ceil(r/1000)}s left`;}
+  // what the clue is worth right now: it ticks down every second, and drops with each hint
+  const worth=G.phase==='clue'?`Worth ${clueWorth(((G.kind==='game'?(G.daily?DIFF.normal:diffOf()).round:PROUND_MS)-liveLeft('roundLeft'))/1000,clueHints(),clueMult())} · `:'';
+  if(G.phase==='clue'&&G.kind==='game'&&G.lines.length<diffOf().lines){const h=liveLeft('hintIn');bar.style.width=(100*(1-h/diffOf().hint))+'%';lab.textContent=`${worth}next hint in ${Math.ceil(h/1000)}s`;}
+  else if(G.phase==='clue'){const r=liveLeft('roundLeft');bar.style.width=(100*r/(G.kind==='game'?diffOf().round:PROUND_MS))+'%';lab.textContent=`${worth}${Math.ceil(r/1000)}s left`;}
   else if(G.phase==='hide'){const r=liveLeft('roundLeft');bar.style.width=(100*r/HIDE_MS)+'%';lab.textContent=`${Math.ceil(r/1000)}s to hide`;}
   else if(G.phase==='seek'){const r=liveLeft('roundLeft');bar.style.width=(100*r/SEEK_MS)+'%';lab.textContent=`${Math.ceil(r/1000)}s left`;}
   else if(G.phase==='pick'){const r=liveLeft('roundLeft');bar.style.width=(100*r/PICK_MS)+'%';lab.textContent=`${Math.ceil(r/1000)}s to pick`;}
@@ -189,7 +232,7 @@ function renderRecap(){
   const h=document.createElement('h2');h.textContent=G.found===G.finds.length&&G.found>0?'A perfect hunt!':'That’s a wrap!';
   const big=document.createElement('div');big.className='big';big.textContent=G.score;
   const p=document.createElement('p');p.style.fontWeight='800';p.style.margin='0';p.textContent=`Team score. You found ${G.found} of ${G.finds.length} things.`;
-  const p2=document.createElement('p');p2.className='sub';p2.textContent=[G.daily?'📅 Daily hunt':DIFF[G.diff].label,G.best>=2?`🔥 Best streak: ${G.best} in a row`:'',seen.earned?`🪙 You earned ${seen.earned} coins`:''].filter(Boolean).join(' · ');
+  const p2=document.createElement('p');p2.className='sub';p2.textContent=[G.daily?'📅 Daily challenge':DIFF[G.diff].label,G.daily&&G.dsecs?`⏱ ${fmtT(G.dsecs*1000)}`:'',seen.earned?`🪙 You earned ${seen.earned} coins`:''].filter(Boolean).join(' · ');
   const ul=document.createElement('ul');ul.className='finds';
   G.finds.forEach(f=>{const li=document.createElement('li');const a=document.createElement('span');a.textContent=f.n?(f.n.charAt(0).toUpperCase()+f.n.slice(1)):'A mystery';
     const pts=document.createElement('span');pts.className='pts';pts.textContent=f.p?'+'+f.p:'0';
@@ -198,9 +241,13 @@ function renderRecap(){
   const row=document.createElement('div');row.className='row';
   if(amHost()){const again=document.createElement('button');again.className='btn';again.textContent='Play again';again.onclick=()=>{G.phase='lobby';commit();};row.appendChild(again);}
   else{const w=document.createElement('span');w.style.fontWeight='800';w.textContent=`Waiting for ${peerName(hostPeer())} to start another round.`;row.appendChild(w);}
+  if(Net.room){const inv=document.createElement('button');inv.className='btn alt';inv.textContent='📨 Invite';inv.onclick=()=>$('#inviteBtn').click();row.appendChild(inv);}
   const lv=document.createElement('button');lv.className='btn alt';lv.textContent='Wander around';lv.onclick=()=>{wrap.hidden=true;seen.recapGone=true;renderExit();};row.appendChild(lv);
-  if(G.teams){const r=G.ts.r||0,bl=G.ts.b||0;h.textContent=r===bl?'It’s a tie!':r>bl?'🔴 Red team wins!':'🔵 Blue team wins!';big.textContent=`🔴 ${r} · 🔵 ${bl}`;
-    p.textContent=`Together you found ${G.found} of ${G.finds.length} things.`;}
+  if(G.teams){
+    // most finds wins (first to 5); if the clues ran out level, points decide
+    const fr=G.tf.r||0,fb=G.tf.b||0,pr=G.ts.r||0,pb=G.ts.b||0,w=fr!==fb?(fr>fb?'r':'b'):pr!==pb?(pr>pb?'r':'b'):'';
+    h.textContent=!w?'It’s a tie!':w==='r'?'🔴 Red team wins!':'🔵 Blue team wins!';big.textContent=`🔴 ${fr} · 🔵 ${fb}`;
+    p.textContent=`Finds, first to ${TEAM_GOAL}. Points: 🔴 ${pr} · 🔵 ${pb}${fr===fb&&w?' (points broke the tie)':''}.`;}
   if(G.hs){
     const rank=Object.entries(G.pts).sort((x,y)=>y[1]-x[1]);
     h.textContent='Hide & seek results';big.textContent=rank.length?`${G.pnames[rank[0][0]]||'Someone'} wins!`:'';big.style.fontSize='40px';
@@ -231,7 +278,32 @@ $('#totalSeg').addEventListener('click',e=>{const b=e.target.closest('button');i
 $('#diffSeg').addEventListener('click',e=>{const b=e.target.closest('button');if(!b||!amHost()||G.phase!=='lobby')return;G.diff=b.dataset.diff;commit();});
 $('#huntSeg').addEventListener('click',e=>{const b=e.target.closest('button');if(!b||!amHost()||G.phase!=='lobby')return;
   G.hs=b.dataset.hunt==='hide';G.daily=b.dataset.hunt==='daily'?todayKey():'';if(G.daily||G.hs)G.teams=false;if(G.daily){G.mode='game';G.total=DAILY_N;G.diff='normal';}commit();});
+$('#shufSeg').addEventListener('click',e=>{const b=e.target.closest('button');if(!b||!amHost()||G.phase!=='lobby')return;G.shuf=b.dataset.shuf==='1';commit();});
 $('#teamSeg').addEventListener('click',e=>{const b=e.target.closest('button');if(!b||!amHost()||G.phase!=='lobby')return;G.teams=b.dataset.teams==='1';if(G.teams)G.mode='game';commit();});
+$('#hotBtn').addEventListener('click',e=>{e.stopPropagation();if(!amHost()||G.phase!=='clue')return;G.hot=!G.hot;sfx.pop();commit();});
+/* ---------- Red vs Blue: the host picks the teams in the lobby ---------- */
+function renderTeams(host){
+  const box=$('#teamPick');box.hidden=!G.teams;if(!G.teams)return;
+  for(const [id,side] of [['#teamR','r'],['#teamB','b']]){
+    const el=$(id);el.textContent='';
+    for(const p of sortedPlayers().filter(p=>G.tm[p.peer]===side)){
+      const b=document.createElement('button');b.type='button';b.className='tchip';b.disabled=!host;
+      const dot=document.createElement('i');dot.style.background=safeCol(p.presence.col);
+      b.append(dot,document.createTextNode((clean(p.presence.name)||'Bean')+(p.sameTab?' (you)':'')));
+      if(host){b.title='Move to the other team';b.onclick=()=>{G.tm[p.peer]=side==='r'?'b':'r';sfx.pop();commit();};}
+      el.appendChild(b);
+    }
+    if(!el.children.length){const s=document.createElement('small');s.textContent='Nobody yet';el.appendChild(s);}
+  }
+  $('#teamTip').textContent=host?'Tap a name to move them to the other team.':'The host picks the teams.';
+  $('#teamShuffle').hidden=!host;
+}
+$('#teamShuffle').addEventListener('click',()=>{
+  if(!amHost()||G.phase!=='lobby'||!G.teams)return;
+  const ps=sortedPlayers().map(p=>p.peer);for(let i=ps.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[ps[i],ps[j]]=[ps[j],ps[i]];}
+  G.tm={};ps.forEach((p,i)=>{G.tm[p]=i%2?'b':'r';});sfx.pop();commit();
+});
+$('#roomCode').addEventListener('click',()=>$('#inviteBtn').click());
 $('#startBtn').addEventListener('click',()=>{audioInit();if(amHost()&&G.phase==='lobby'){startGame();tryLock();}});
 // fold the clue card away for a clearer view, and back again
 $('#clueToggle').addEventListener('click',e=>{e.stopPropagation();$('#clue').classList.toggle('min');renderAll();});

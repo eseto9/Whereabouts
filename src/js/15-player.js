@@ -1,7 +1,7 @@
 /* =========================================================
    Local player
    ========================================================= */
-const P={pos:new V3(sr(-3,3),0.4,sr(4,7)),vel:new V3(),yaw:Math.PI,pitch:0.32,face:Math.PI,onGround:true,an:0,em:null,emAt:0,bean:null,wob:0};
+const P={board:false,pos:new V3(sr(-3,3),0.4,sr(4,7)),vel:new V3(),yaw:Math.PI,pitch:0.32,face:Math.PI,onGround:true,an:0,em:null,emAt:0,bean:null,wob:0};
 const keys={};
 let chatFocus=false;
 function updatePlayer(dt){
@@ -11,9 +11,10 @@ function updatePlayer(dt){
   const frozen=frozenSeeker();
   if(!chatFocus&&!frozen){if(keys.KeyW||keys.ArrowUp)fw+=1;if(keys.KeyS||keys.ArrowDown)fw-=1;if(keys.KeyD||keys.ArrowRight)st+=1;if(keys.KeyA||keys.ArrowLeft)st-=1;fw-=joy.y;st+=joy.x;}
   const dir=f.multiplyScalar(fw).add(r.multiplyScalar(st));
-  const moving=dir.lengthSq()>0.01; if(moving) dir.normalize();
-  const run=keys.ShiftLeft||keys.ShiftRight||Math.hypot(joy.x,joy.y)>0.95;
-  const speed=run?10.5:6.4;
+  const moving=dir.lengthSq()>0.04; if(moving) dir.normalize(); else dir.set(0,0,0);
+  // one steady speed (the stick only steers); Shift is a deliberate run on a keyboard
+  const run=keys.ShiftLeft||keys.ShiftRight;
+  const speed=P.board?RIDE_INFO[rideOf(myFit)].speed:run?11:8;   // rides are the quick way across town
   P.vel.x=lerp(P.vel.x,dir.x*speed,damp(P.onGround?12:4,dt));
   P.vel.z=lerp(P.vel.z,dir.z*speed,damp(P.onGround?12:4,dt));
   if(!chatFocus&&!frozen&&(keys.Space||P.jumpReq)&&P.onGround){P.vel.y=8.6;P.onGround=false;sfx.jump();}
@@ -34,8 +35,8 @@ function updatePlayer(dt){
   else P.onGround=false;
   const hs=Math.hypot(P.vel.x,P.vel.z);
   if(hs>0.5) P.face=angLerp(P.face,Math.atan2(P.vel.x,P.vel.z),damp(14,dt));
-  P.an=!P.onGround?3:hs>8?2:hs>0.8?1:0;
-  P.bean.position.copy(P.pos);P.bean.rotation.y=P.face;
+  P.an=!P.onGround?3:P.board?0:hs>8?2:hs>0.8?1:0;
+  P.bean.position.copy(P.pos);if(P.board)P.bean.position.y+=rideLift(myFit);P.bean.rotation.y=P.face;
   if(P.wob>0){P.wob-=dt;P.bean.rotation.z=Math.sin(P.wob*30)*0.12*P.wob;}else P.bean.rotation.z=0;
 }
 function collide(p){
@@ -48,10 +49,29 @@ function collide(p){
           if(m===l)p.x=o.x0-R;else if(m===r)p.x=o.x1+R;else if(m===t)p.z=o.z0-R;else p.z=o.z1+R;}}}
   }
 }
+// hop on or off the hoverboard (the 🛹 button on phones, B on a keyboard)
+function setBoard(on){
+  if(on===P.board)return;P.board=on;sfx.jump();buzz(20);sendPresence(true);
+  // the first few rides: tell people tricks exist
+  if(on){let n=0;try{n=+localStorage.getItem('wb.tkTip')||0;}catch(e){}
+    if(n<3){try{localStorage.setItem('wb.tkTip',String(n+1));}catch(e){}setTimeout(()=>{if(P.board)toast(touchMode?'Double-tap Ride for a trick!':'Press T for a trick!',2200);},700);}}
+  for(const b of document.querySelectorAll('[data-act=board]'))b.setAttribute('aria-pressed',on);
+}
+// Ride button: one tap hops on or off; a quick double-tap while riding does a trick instead
+let rideTapT=null;
+function rideTap(){
+  if(!P.board){setBoard(true);return;}
+  if(rideTapT){clearTimeout(rideTapT);rideTapT=null;doTrick();return;}
+  rideTapT=setTimeout(()=>{rideTapT=null;setBoard(false);},300);
+}
+function doTrick(){
+  const tr=TRICKS[rideOf(myFit)];if(!P.board||!tr||Date.now()-(P.tk||0)<tr.dur*1000+150)return;
+  P.tk=Date.now();sfx.zoom();sfx.pop();buzz(25);sendPresence(true);bumpStat('tricks');
+}
 const camTmp=new V3(),lookTmp=new V3();
 function updateCamera(dt){
   const head=camTmp.set(P.pos.x,P.pos.y+1.35,P.pos.z);
-  camera.fov=lerp(camera.fov,62,damp(12,dt));
+  camera.fov=lerp(camera.fov,P.board&&Math.hypot(P.vel.x,P.vel.z)>6?70:62,damp(P.board?3:12,dt));
   const dist=7.2,cp=Math.cos(P.pitch);
   let cx=head.x-Math.sin(P.yaw)*dist*cp,cy=head.y+Math.sin(P.pitch)*dist+0.3,cz=head.z-Math.cos(P.yaw)*dist*cp;
   cy=Math.max(cy,Math.max(landH(cx,cz),-0.45)+0.6);

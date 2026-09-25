@@ -32,6 +32,10 @@ const sfx={
   fanfare(){[523,659,784,1047,784,1047,1319].forEach((f,i)=>tone(f,0.34,'triangle',0.15,i*0.12));},
   spy(){tone(392,0.2,'triangle',0.15);tone(587,0.35,'triangle',0.15,0.16);},
   clue(){tone(523,0.18,'sine',0.14);tone(784,0.3,'sine',0.13,0.12);},
+  cluck(v){v=v||1;tone(560,0.07,'square',0.03*v,0,380);tone(600,0.07,'square',0.03*v,0.1,420);tone(700,0.1,'square',0.025*v,0.2,480);},
+  meow(v){v=v||1;tone(560,0.16,'triangle',0.12*v,0,900);tone(900,0.3,'triangle',0.1*v,0.15,480);},
+  bark(v){v=v||1;tone(460,0.09,'square',0.05*v,0,250);tone(440,0.1,'square',0.045*v,0.17,230);},
+  coin(){tone(988,0.08,'square',0.045);tone(1319,0.3,'square',0.045,0.08);},
   gull(v){tone(1600,0.32,'sawtooth',0.02*v,0,850);tone(1450,0.28,'sawtooth',0.018*v,0.3,760);},
 };
 const CHORDS=[[53,57,60,64],[52,55,59,62],[50,53,57,60],[48,52,55,59]];

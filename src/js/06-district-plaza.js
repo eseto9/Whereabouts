@@ -57,8 +57,9 @@ function buildPlaza(){
    g.add(at(box(7.4,0.4,5.4,'#FFFFFF'),0,3.95,0));
    g.add(at(box(1.2,2,0.2,'#8A5A44',{w:0.03}),-1.8,1,2.55));
    g.add(at(box(2.4,1.3,0.15,'#BFE9FF',{w:0.03}),1.4,1.7,2.55));
-   const aw=mk(new THREE.BoxGeometry(7.2,0.15,1.8),0,{mat:MT(stripeTex('#FF6F8E','#FFFFFF',10))}); aw.position.set(0,2.9,3.3); aw.rotation.x=0.3; g.add(aw);
-   const s=signBox('Brew Ha Ha',4.6,0.9,'#2B2040','#FFD23F'); s.position.set(0,3.35,2.6); g.add(s);
+   const aw=mk(new THREE.BoxGeometry(7.2,0.15,1.8),0,{mat:MT(stripeTex('#FF6F8E','#FFFFFF',10))}); aw.position.set(0,2.45,3.3); aw.rotation.x=0.3; g.add(aw);
+   // the sign sits clear of the awning and in front of the roof edge, so every letter shows
+   const s=signBox('Brew Ha Ha',4.6,0.8,'#2B2040','#FFD23F'); s.position.set(0,3.25,2.8); g.add(s);
    g.add(at(cyl(0.3,0.3,0.4,'#FFFFFF',10),2.8,4.4,1.2)); g.add(at(cyl(0.34,0.34,0.08,'#8A5A44',10),2.8,4.64,1.2));
    onGround(g,10,-11);
    F(g,{k:'cafe',n:'the Brew Ha Ha café',c:['mint','pink'],s:'boxy',m:'wood',v:'wide awake',snd:'hiss-gurgle',u:'grab a latte at',e:'☕😆🏠'});
@@ -191,9 +192,12 @@ function buildPlaza(){
   });
   // paper airplane looping over the square
   {const g=new THREE.Group();
-   const shp=new THREE.Shape();shp.moveTo(0,0.5);shp.lineTo(0.35,-0.3);shp.lineTo(0,-0.15);shp.lineTo(-0.35,-0.3);shp.lineTo(0,0.5);
-   const pm=mk(new THREE.ShapeGeometry(shp),'#FFFFFF',{mat:new THREE.MeshToonMaterial({color:'#FFFFFF',side:THREE.DoubleSide,gradientMap:gradTex}),w:0.03});
-   pm.rotation.x=-Math.PI/2; g.add(pm); scene.add(g);
+   // a real folded plane (two wings and a keel) with inked edges: a flat cut-out with an outline flickered
+   const N=[0,0,-0.6],L=[-0.4,0.09,0.32],R=[0.4,0.09,0.32],C=[0,0,0.32],K=[0,-0.14,0.32];
+   const pg=new THREE.BufferGeometry();pg.setAttribute('position',new THREE.Float32BufferAttribute([...N,...C,...L, ...N,...R,...C, ...N,...K,...C],3));pg.computeVertexNormals();
+   const pm=new THREE.Mesh(pg,new THREE.MeshToonMaterial({color:'#FFFFFF',side:THREE.DoubleSide,gradientMap:gradTex}));pm.castShadow=true;
+   pm.add(new THREE.LineSegments(new THREE.EdgesGeometry(pg),new THREE.LineBasicMaterial({color:0x2B2040})));
+   g.add(pm); scene.add(g);
    F(g,{k:'paper airplane',n:'the paper airplane',c:['white'],s:'pointy',m:'paper',v:'carefree',snd:'fwip',e:'📄✈️🌀',r:'Somebody folded me out of homework and let me go.',mv:true});
    const prev=new V3();
    W.movers.push(t=>{const a=t*0.35;prev.copy(g.position);g.position.set(Math.sin(a)*9,6.5+Math.sin(a*2)*1.4,Math.sin(a)*Math.cos(a)*9);

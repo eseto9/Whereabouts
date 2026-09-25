@@ -37,7 +37,7 @@ const scene=new THREE.Scene();
 const HORIZON=new THREE.Color('#FFD2A1');
 scene.background=HORIZON.clone();
 scene.fog=new THREE.Fog(HORIZON,120,380);
-const camera=new THREE.PerspectiveCamera(62,window.innerWidth/window.innerHeight,0.1,1600);
+const camera=new THREE.PerspectiveCamera(62,window.innerWidth/window.innerHeight,0.4,1600);
 camera.position.set(60,40,60);
 
 /* ---------- lights: golden hour ---------- */

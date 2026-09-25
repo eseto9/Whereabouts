@@ -13,7 +13,6 @@
 <canvas id="c" tabindex="0" aria-label="Whereabouts 3D town"></canvas>
 <div id="nogl" hidden>Whereabouts needs WebGL. Try a recent version of Chrome, Edge, Firefox or Safari on a computer.</div>
 <div id="loading">Building the town…</div>
-<div id="rotate" aria-live="polite"><div class="phoneIcon" aria-hidden="true">📱</div><p>Turn your phone sideways to play</p></div>
 
 <section id="title">
   <h1 class="wordmark" aria-label="Whereabouts"></h1>
@@ -23,6 +22,7 @@
       <button role="tab" id="tabWear" aria-controls="wearView" aria-selected="true">👕 Wardrobe</button>
       <button role="tab" id="tabShop" aria-controls="shopView" aria-selected="false">🛍️ Shop</button>
       <button role="tab" id="tabPedia" aria-controls="pediaView" aria-selected="false">📖 Townpedia</button>
+      <button role="tab" id="tabLead" aria-controls="leadView" aria-selected="false">🏆 Leaders</button>
       <span class="wallet" title="Your coins">🪙 <b class="coinsN">0</b></span>
     </div>
     <div class="prevCol">
@@ -37,6 +37,7 @@
       <div class="field"><label>Bottoms</label><div class="opts" id="botOpts"></div><div class="swatches sm" id="botTone"></div></div>
       <div class="field"><label>Shoes</label><div class="opts" id="shoeOpts"></div><div class="swatches sm" id="shoeTone"></div></div>
       <div class="field"><label>Extra</label><div class="opts" id="xOpts"></div></div>
+      <div class="field"><label>Ride</label><div class="opts" id="rideOpts"></div></div>
     </div>
     <div class="view" id="shopView" role="tabpanel" aria-labelledby="tabShop" hidden>
       <p class="shopIntro">Find things to earn coins. The faster you find it, the more you get. Tap a picture to try it on.</p>
@@ -47,10 +48,15 @@
       <div class="chips" id="pediaAreas" role="group" aria-label="Area"></div>
       <div class="pedia" id="pediaList"></div>
     </div>
+    <div class="view" id="leadView" role="tabpanel" aria-labelledby="tabLead" hidden>
+      <p class="shopIntro">All-time points from the things each player found. Harder games count for more.</p>
+      <ol class="board lead" id="leadBoard"></ol>
+    </div>
     <p class="note" id="setupNote" aria-live="polite"></p>
     <p class="note invite" id="inviteNote" hidden></p>
     <div class="joinrow">
       <button class="btn" id="createBtn">Start a room</button>
+      <button class="btn daily" id="dailyBtn">📅 Daily challenge</button>
       <span class="or">or</span>
       <input id="codeIn" type="text" maxlength="4" placeholder="CODE" aria-label="Room code" autocomplete="off">
       <button class="btn sea" id="joinBtn">Join</button>
@@ -66,27 +72,31 @@
 </section>
 
 <div id="hud" hidden>
-  <div id="stats" class="panel">
-    <div class="stat"><small>Room</small><span class="code" id="roomCode">----</span></div>
-    <div class="stat"><small id="scoreLbl">Team score</small><b id="score">0</b></div>
-    <div class="stat"><small>Streak</small><b id="streakN">–</b></div>
-    <div class="stat"><small>Clue</small><b id="clueNum">–</b></div>
-    <div class="stat"><small>Time left</small><b id="timeLeft">–</b></div>
-    <button id="exitBtn" class="exitBtn" type="button"></button>
-  </div>
-  <div id="clue" class="panel" hidden>
-    <button id="clueToggle" type="button" aria-expanded="true" aria-label="Hide the clue">▴</button>
-    <div class="phase" id="cluePhase"></div>
-    <p class="main" id="clueMain"></p>
-    <ul id="clueHints"></ul>
-    <button id="clueMore" type="button" hidden></button>
-    <div class="pips" id="pips"></div>
-    <div id="hot" hidden><span aria-hidden="true">🧊</span><div class="hotbar"><i></i></div><span aria-hidden="true">🔥</span><small id="hotLbl" aria-live="polite"></small></div>
+  <!-- one card: the room, score, clue number and time along the top, the clue underneath -->
+  <div id="clue" class="panel noclue">
+    <div id="stats">
+      <button class="code" id="roomCode" type="button" title="Invite friends to this room" aria-label="Room code. Tap to invite friends">----</button>
+      <span class="stat"><small id="scoreLbl">Score</small><b id="score">0</b></span>
+      <span class="stat"><small>Clue</small><b id="clueNum">–</b></span>
+      <span class="stat"><small>⏱</small><b id="timeLeft">–</b></span>
+      <button id="exitBtn" class="exitBtn" type="button"></button>
+      <button id="clueToggle" type="button" aria-expanded="true" aria-label="Hide the clue">▴</button>
+    </div>
+    <div id="clueBody">
+      <div class="phase" id="cluePhase"></div>
+      <p class="main" id="clueMain"></p>
+      <ul id="clueHints"></ul>
+      <button id="clueMore" type="button" hidden></button>
+      <div class="pips" id="pips"></div>
+      <button id="hotBtn" type="button" hidden aria-pressed="false">🌡️ Hot/cold: off</button>
+      <div id="hot" hidden><span aria-hidden="true">🧊</span><div class="hotbar"><i></i></div><span aria-hidden="true">🔥</span><small id="hotLbl" aria-live="polite"></small></div>
+    </div>
   </div>
   <div id="compass" class="panel" aria-hidden="true"></div>
   <div id="tools"><button id="coinBtn" aria-label="Your coins. Open the shop">🪙 <b class="coinsN">0</b><span id="coinPop" aria-hidden="true"></span></button><button id="wardrobeBtn" aria-label="Change outfit">👕 Outfit</button><button id="mute" aria-label="Toggle sound">Sound on</button></div>
   <div id="cross"></div>
   <div id="toast" role="status" aria-live="polite"></div>
+  <div id="roundCard" hidden role="status" aria-live="polite"><div class="rcConf" aria-hidden="true"></div><div class="rcTop" id="rcTop"></div><div class="rcBig" id="rcBig"></div><div class="rcSub" id="rcSub"></div><div class="rcChips" id="rcChips"></div></div>
   <div id="tip" class="panel" hidden></div>
 
   <div id="lobby" class="panel" hidden>
@@ -100,24 +110,36 @@
       <button data-hunt="daily">📅 Daily hunt</button>
       <button data-hunt="hide">🙈 Hide &amp; seek</button>
     </div>
+    <div class="lbl">Town</div>
+    <div class="seg" id="shufSeg">
+      <button data-shuf="1">🔀 Shuffle each game</button><button data-shuf="0">📌 Same every time</button>
+    </div>
     <div id="freeOpts">
       <div class="lbl">Play as</div>
       <div class="seg" id="teamSeg">
         <button data-teams="0">🤝 One team</button><button data-teams="1">🔴 vs 🔵</button>
       </div>
+      <div id="teamPick" hidden>
+        <div class="teamCols"><div class="teamCol red"><b>🔴 Red</b><div id="teamR"></div></div><div class="teamCol blue"><b>🔵 Blue</b><div id="teamB"></div></div></div>
+        <div class="teamFoot"><small id="teamTip"></small><button class="btn alt" id="teamShuffle" type="button">🔀 Shuffle</button></div>
+      </div>
+      <div id="modeOpts">
       <div class="lbl">Who writes the clues</div>
       <div class="seg" id="modeSeg">
         <button data-mode="game">The game</button>
         <button data-mode="player">Players</button>
-        <button data-mode="alt">Take turns</button>
       </div>
+      </div>
+      <div id="totalOpts">
       <div class="lbl">Clues per game</div>
       <div class="seg" id="totalSeg">
-        <button data-total="6">6</button><button data-total="8">8</button><button data-total="10">10</button>
+        <button data-total="5">5</button><button data-total="7">7</button><button data-total="10">10</button>
       </div>
+      </div>
+      <p class="need" id="teamGoal" hidden>🏁 First team to find 5 things wins!</p>
       <div class="lbl">Difficulty</div>
       <div class="seg" id="diffSeg">
-        <button data-diff="easy">Easy</button><button data-diff="normal">Normal</button><button data-diff="hard">Hard</button>
+        <button data-diff="easy">Easy <small>½ pts</small></button><button data-diff="normal">Normal</button><button data-diff="hard">Hard <small>2× pts</small></button>
       </div>
     </div>
     <div id="hideOpts" hidden>
@@ -136,11 +158,16 @@
   <div id="touchUI" hidden>
     <div id="joy" role="application" aria-label="Walk: drag the stick"><div id="joyKnob"></div></div>
     <div id="tbtns">
-      <button class="tb" data-act="chat" aria-label="Chat">💬</button>
-      <button class="tb jump" data-act="jump" aria-label="Jump">Jump</button>
+      <button class="tb jump" data-act="board" aria-label="Hoverboard" aria-pressed="false">🛹 Board</button>
     </div>
   </div>
 
+  <canvas id="miniMap" width="232" height="168" aria-label="Map: click to open" role="button"></canvas>
+  <div id="mapView" hidden><div class="mapBox panel"><canvas id="mapBig" width="824" height="592" aria-label="Map of the island"></canvas>
+    <button id="mapClose" class="exitBtn" type="button">✕ Close map</button><p class="mapKey">You’re the arrow. A glowing name is where the clue says to look. Gold dots are golden acorns and shells to collect.</p></div></div>
+  <button id="mapBtn" type="button" aria-label="Map">🗺️</button>
+  <button id="chatBtn" type="button" aria-label="Chat">💬</button>
+  <div id="chatLast" role="button" aria-label="Open the chat"></div>
   <div id="chat">
     <div id="chatLog" class="panel" aria-live="polite"></div>
     <input id="chatInput" type="text" maxlength="160" placeholder="Press Enter to chat" autocomplete="off" aria-label="Chat message">
@@ -155,6 +182,9 @@
       <kbd>Click</kbd><span>Guess what's under the crosshair</span>
       <kbd>Q</kbd><span>Ping a spot for your team</span>
       <kbd>Space</kbd><span>Jump</span>
+      <kbd>B</kbd><span>Hop on your ride</span>
+      <kbd>T</kbd><span>Ride trick (or tap B twice)</span>
+      <kbd>Tab</kbd><span>Map</span>
       <kbd>1–5</kbd><span>Wave, point, dance, shrug, cheer</span>
       <kbd>Enter</kbd><span>Chat</span>
       <kbd>M</kbd><span>Sound on/off</span>

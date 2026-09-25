@@ -52,7 +52,6 @@ function addPing(x,y,z,col,name){
 let redT=0;function redFlash(){redT=0.35;}
 function celebrate(o,d){
   const c=objCenter(o);burst(c);sfx.chime();
-  toast(`${clean(d.gn)} found it!`);
   if(d.gp===myPeer())emote('cheer');
 }
 function updateFx(dt){

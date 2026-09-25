@@ -30,3 +30,22 @@ window.checkLayout = async () => {
   $('#doneBtn').click(); await wait(200);
   return res;
 };
+
+// dev only: park the camera anywhere and draw one frame, e.g. view(0,150,1, 0,0,0, 60)
+window.view=(x,y,z,lx,ly,lz,fov)=>{
+  window.__camHold=1;
+  for(const e of document.querySelectorAll('#title,#hud,#lobby,.panel'))e.style.visibility='hidden';
+  const c=__wb.camera;c.position.set(x,y,z);c.fov=fov||55;c.updateProjectionMatrix();c.lookAt(lx,ly,lz);
+  __wb.renderer.render(__wb.scene,c);return 'ok';
+};
+// dev only: view() plus a copy of the frame pinned to the top-left quarter (the preview pane's
+// screenshots sometimes only show that quarter of a WebGL canvas)
+window.snap=(...a)=>{
+  view(...a);const src=document.querySelector('#c');const c=document.createElement('canvas');c.width=src.width/2;c.height=src.height/2;
+  c.getContext('2d').drawImage(src,0,0,c.width,c.height);
+  let im=document.getElementById('snapimg');
+  if(!im){im=document.createElement('img');im.id='snapimg';im.style.cssText='position:fixed;left:0;top:0;width:50vw;height:50vh;z-index:99999;pointer-events:none';document.body.appendChild(im);}
+  im.src=c.toDataURL();return 'ok';
+};
+// dev only: render a view and save it as dev/.shots/<name>.png through the dev server
+window.shot=async(name,...a)=>{view(...a);const u=document.querySelector('#c').toDataURL('image/png');await fetch('/__shot?name='+name,{method:'POST',body:u});return name;};

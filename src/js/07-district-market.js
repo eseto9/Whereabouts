@@ -61,29 +61,29 @@ function buildMarket(){
     g.add(at(box(1.3,2.1,0.2,'#8A5A44',{w:0.03}),-1.8,1.05,2.55));
     g.add(at(box(2.6,1.5,0.15,'#BFE9FF',{w:0.03}),1.3,1.7,2.55));
     const aw=mk(new THREE.BoxGeometry(3.2,0.12,1.3),0,{mat:MT(stripeTex(roof,'#FFFFFF',8))});aw.position.set(1.3,2.75,3.1);aw.rotation.x=0.35;g.add(aw);
-    const s=signBox(label,4.8,0.9,labCol,'#2B2040');s.position.set(0,3.6,2.62);g.add(s);
+    const s=signBox(label,4.8,0.8,labCol,'#2B2040');s.position.set(0,3.92,2.66);g.add(s);   // high enough to clear the stall awnings
     if(extra) extra(g);
     onGround(g,x,z); g.rotation.y=side>0?Math.PI:0; F(g,meta); rect(x,z,7.2,5.2); return g;};
-  shop(33,-1,'#FFD6DC','#E84A6F','Bun & Done','#FFF3D6',{k:'bakery',n:'the bakery',c:['pink'],s:'boxy',m:'brick',v:'warm and toasty',snd:'ding',u:'buy a fresh bun at',e:'🥐🔥🏠'},g=>{
+  shop(33,-1,'#FFD6DC','#E84A6F','Knead to Know','#FFF3D6',{k:'bakery',n:'the Knead to Know bakery',c:['pink'],s:'boxy',m:'brick',v:'warm and toasty',snd:'ding',u:'buy a fresh bun at',e:'🥐🔥🏠'},g=>{
     const pz=new THREE.Group();const pr=mk(new THREE.TorusGeometry(0.45,0.14,6,12),'#C8782F');pz.add(pr);const p2=mk(new THREE.TorusGeometry(0.28,0.12,6,10),'#C8782F');p2.position.set(0,-0.2,0);pz.add(p2);
     pz.position.set(3.7,3.2,2.2);g.add(pz);g.add(at(box(0.8,0.08,0.08,'#2B2040',{ol:false}),3.4,3.8,2.2));
     W.movers.push(t=>{pz.rotation.y=t*1.5;});});
-  shop(42,-1,'#CFE4FF','#3F6FB5','Snip Snip','#FFFFFF',{k:'barbershop',n:'the barbershop',c:['blue'],s:'boxy',m:'brick',v:'very well groomed',snd:'snip-snip',u:'get a fresh haircut at',e:'✂️💇😎'},g=>{
+  shop(42,-1,'#CFE4FF','#3F6FB5','Curl Up & Dye','#FFFFFF',{k:'barbershop',n:'the Curl Up & Dye barbershop',c:['blue'],s:'boxy',m:'brick',v:'very well groomed',snd:'snip-snip',u:'get a fresh haircut at',e:'✂️💇😎'},g=>{
     const tex=stripeTex('#FF3B5C','#FFFFFF',6);tex.wrapS=tex.wrapT=THREE.RepeatWrapping;tex.rotation=0.5;
     const pole=mk(new THREE.CylinderGeometry(0.2,0.2,1.6,12),0,{mat:MT(tex)});pole.position.set(-3.2,2.2,2.7);g.add(pole);
     g.add(at(sph(0.22,'#4D96FF',8,6),-3.2,3.1,2.7));
     W.movers.push(t=>{tex.offset.x=(t*0.5)%1;});});
-  shop(51,-1,'#E3D5FF','#6B4FC8','Bean Boutique','#FFD23F',{k:'clothes shop',n:'the Bean Boutique',c:['lavender','purple'],s:'boxy',m:'brick',v:'fancy',u:'spend your coins on clothes at',e:'👗👟🧣',r:'I have a giant T-shirt on my roof, and I’ll dress you for a few coins.'},g=>{
+  shop(51,-1,'#E3D5FF','#6B4FC8','Frock & Roll','#FFD23F',{k:'clothes shop',n:'the Frock & Roll clothes shop',c:['lavender','purple'],s:'boxy',m:'brick',v:'fancy',u:'spend your coins on clothes at',e:'👗👟🧣',r:'I have a giant T-shirt on my roof, and I’ll dress you for a few coins.'},g=>{
     // a giant T-shirt on the roof
     const tee=new THREE.Group();tee.add(at(box(1.9,2,0.35,'#FF5D73',{w:0.05}),0,0,0));
     for(const s of[-1,1])tee.add(rot(at(box(1,0.75,0.35,'#FF5D73',{w:0.05}),1.2*s,0.55,0),0,0,-0.55*s));
     tee.add(at(box(0.7,0.14,0.37,'#FFFFFF',{ol:false}),0,0.95,0));tee.add(at(box(1.9,0.22,0.37,'#FFFFFF',{ol:false}),0,-0.3,0));
     tee.position.set(0,7.9,0);g.add(tee);});
-  shop(33,1,'#C9F2E1','#2F9E8F',"Fin's Fish",'#FFFFFF',{k:'fish shop',n:"Fin's Fish shop",c:['mint','teal'],s:'boxy',m:'brick',v:'a little salty',snd:'splash',u:'buy fresh fish at',e:'🐟🏪🧊'});
-  shop(42,1,'#FFF0B3','#F29D38','Tiny Things','#FF5D73',{k:'toy shop',n:'the toy shop',c:['yellow','orange'],s:'boxy',m:'brick',v:'giddy',snd:'squeak',u:'buy a wind-up toy at',e:'🧸🪀🎁'},g=>{
+  shop(33,1,'#C9F2E1','#2F9E8F','The Codfather','#FFFFFF',{k:'fish shop',n:'the Codfather fish shop',c:['mint','teal'],s:'boxy',m:'brick',v:'a little salty',snd:'splash',u:'buy fresh fish at',e:'🐟🏪🧊'});
+  shop(42,1,'#FFF0B3','#F29D38','Just Toying','#FF5D73',{k:'toy shop',n:'the Just Toying toy shop',c:['yellow','orange'],s:'boxy',m:'brick',v:'giddy',snd:'squeak',u:'buy a wind-up toy at',e:'🧸🪀🎁'},g=>{
     const t=new THREE.Group();t.add(at(box(0.6,0.6,0.6,'#FF5D73',{w:0.02}),0,0,0));t.add(at(box(0.6,0.6,0.6,'#4D96FF',{w:0.02}),0.62,0,0));t.add(at(box(0.6,0.6,0.6,'#FFD23F',{w:0.02}),0.31,0.6,0));
     t.position.set(0.8,1.3,2.9);g.add(t);});
-  shop(51,1,'#FFE0F0','#D65DB1','Petal Pushers','#FFFFFF',{k:'florist',n:'the flower shop',c:['pink'],s:'boxy',m:'brick',v:'blooming lovely',u:'order a bouquet at',e:'🌸🏪💐'},g=>{
+  shop(51,1,'#FFE0F0','#D65DB1','Petal Pushers','#FFFFFF',{k:'florist',n:'the Petal Pushers flower shop',c:['pink'],s:'boxy',m:'brick',v:'blooming lovely',u:'order a bouquet at',e:'🌸🏪💐'},g=>{
     for(let i=0;i<5;i++){g.add(at(box(0.5,0.4,0.5,'#B5654C',{w:0.02}),-3+i*1.5,0.2,3.2));g.add(at(sph(0.3,['#FF5D73','#FFD23F','#F15BB5','#9B5DE5','#FF9F1C'][i],6,5,{w:0.02}),-3+i*1.5,0.62,3.2));}});
 
   // blue butterfly + friends
@@ -95,8 +95,8 @@ function buildMarket(){
     W.movers.push(t=>{const u=t*0.4+i*2;g.position.set(cx+Math.sin(u)*3+Math.sin(u*2.3),landH(cx,cz)+1.6+Math.sin(u*3)*0.5,cz+Math.cos(u*0.8)*2.4);
       const f=Math.sin(t*18+i)*1.1;lp.rotation.z=f;rp.rotation.z=-f;lp.rotation.x=rp.rotation.x=-Math.PI/2;g.rotation.y=u;});};
   bfly('#4D96FF',25,-8,true,0); bfly('#FFD23F',40,7.5,false,1); bfly('#F15BB5',-40,18,false,2); bfly('#FF9F1C',-24,-6,false,3);
-  // flower pots along the street
-  [[21,-8],[27,-8],[21,8],[27,8],[55,-5],[55,5]].forEach(([x,z],i)=>{const g=new THREE.Group();g.add(at(cyl(0.45,0.35,0.6,'#C8703F',8),0,0.3,0));g.add(at(sph(0.5,'#4CB85A',7,5),0,0.9,0));g.add(at(sph(0.15,['#FF5D73','#FFD23F','#F15BB5'][i%3],5,4,{w:0.02}),0.2,1.25,0.2));
+  // flower pots along the street (on the grass, clear of the road and the paving)
+  [[21,-8],[30.5,-8.4],[21,8],[30.5,8.4],[53.5,-7.6],[53.5,7.6]].forEach(([x,z],i)=>{const g=new THREE.Group();g.add(at(cyl(0.45,0.35,0.6,'#C8703F',8),0,0.3,0));g.add(at(sph(0.5,'#4CB85A',7,5),0,0.9,0));g.add(at(sph(0.15,['#FF5D73','#FFD23F','#F15BB5'][i%3],5,4,{w:0.02}),0.2,1.25,0.2));
     onGround(g,x,z);F(g,{k:'pot',n:'a flower pot',c:['green'],s:'round',m:'clay',p:false});circ(x,z,0.5);});
 }
 

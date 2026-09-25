@@ -28,10 +28,3 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px soli
 .btn.sea{background:var(--sea);color:#fff}
 .btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
 input[type=text],textarea{font:inherit;font-weight:800;border:3px solid var(--ink);border-radius:12px;padding:.5em .75em;background:#fff;color:#2B2040;width:100%}
-/* phones are played sideways: held upright, they get a nudge to turn */
-#rotate{display:none;position:fixed;inset:0;z-index:50;background:#FFD7A8;color:#2B2040;flex-direction:column;align-items:center;justify-content:center;gap:12px;text-align:center;padding:24px;font-family:var(--display);font-size:26px}
-#rotate p{margin:0}
-#rotate .phoneIcon{font-size:64px;animation:turn 1.8s ease-in-out infinite}
-@keyframes turn{0%,30%{transform:rotate(0)}60%,100%{transform:rotate(-90deg)}}
-@media (orientation:portrait) and (max-width:600px){ .touch #rotate{display:flex} }
-@media (prefers-reduced-motion:reduce){ #rotate .phoneIcon{animation:none;transform:rotate(-90deg)} }

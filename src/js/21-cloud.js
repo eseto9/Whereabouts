@@ -67,10 +67,10 @@ async function walletPull(){
   try{const snap=await walletRef().get();if(snap.exists)walletMerge(snap.data());}catch(e){}
   walletPush();
 }
-function walletPush(){if(Cloud.db&&Cloud.uid){try{walletWrite(walletRef(),{coins:Wallet.coins,owned:Wallet.owned.slice(),found:Wallet.found.slice(),at:Wallet.at});}catch(e){}}}
+function walletPush(){if(Cloud.db&&Cloud.uid){try{walletWrite(walletRef(),{coins:Wallet.coins,owned:Wallet.owned.slice(),found:Wallet.found.slice(),stats:Wallet.stats,at:Wallet.at});}catch(e){}}}
 
 /* ---------- today's daily-hunt board ---------- */
-const Daily={key:'',rows:[],unsub:null};
+const Daily={key:'',rows:[],unsub:null,web:new Map(),webKey:''};
 function dailyWatch(key){
   if(!Cloud.db||(Daily.unsub&&Daily.key===key))return;
   if(Daily.unsub)Daily.unsub();Daily.key=key;Daily.rows=[];
@@ -80,17 +80,17 @@ function dailyWatch(key){
 function dailyRow(id,d){
   d=d||{};
   return {id,names:(Array.isArray(d.names)?d.names:[]).slice(0,6).map(n=>clean(n,14)).filter(Boolean),
-    score:clamp(Math.round(+d.score||0),0,9999),found:clamp(Math.round(+d.found||0),0,DAILY_N)};
+    score:clamp(Math.round(+d.score||0),0,9999),found:clamp(Math.round(+d.found||0),0,DAILY_N),secs:clamp(Math.round(+d.secs||0),0,36000)};
 }
 // keeps each team leader's best score for the day
-async function dailySubmit(key,score,found,names){
-  if(!Cloud.db)return 'none';
+async function dailySubmit(key,score,found,names,secs){
+  if(!Cloud.db)return dailyWebSubmit(key,score,found,names,secs);
   let ref;
   try{ref=Cloud.db.doc('daily/'+key+'/teams/'+(Cloud.uid||'t'+Math.random().toString(36).slice(2,10)));}
   catch(e){ref=Cloud.db.doc('daily/'+key+'/teams/t'+Math.random().toString(36).slice(2,10));}
   try{
     const cur=await ref.get();
-    if(cur.exists&&(+cur.data().score||0)>=score)return 'kept';
-    await ref.set({names,score,found,at:Date.now()});return 'saved';
+    if(cur.exists&&dailyBetter(cur.data(),{score,secs})>=0)return 'kept';
+    await ref.set({names,score,found,secs,at:Date.now()});return 'saved';
   }catch(e){return 'failed';}
 }

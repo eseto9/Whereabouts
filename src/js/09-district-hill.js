@@ -1,32 +1,62 @@
 /* =========================================================
    Hillside Houses
    ========================================================= */
+const FLOWERS=['#FF5D73','#FFD23F','#FFFFFF','#B39DFF','#FF9F1C'];
+// a framed window with a cross of glazing bars, shutters and (on the front) a flower box
+function houseWindow(g,x,y,z,ry,shut,flowers){
+  const win=new THREE.Group();win.position.set(x,y,z);win.rotation.y=ry;
+  win.add(at(box(1.34,1.34,0.12,'#FFFFFF',{w:0.025}),0,0,0));
+  win.add(at(box(1.06,1.06,0.1,'#4E93C9',{ol:false}),0,0,0.03));
+  win.add(at(box(0.08,1.06,0.05,'#FFFFFF',{ol:false}),0,0,0.1));win.add(at(box(1.06,0.08,0.05,'#FFFFFF',{ol:false}),0,0,0.1));
+  win.add(rot(at(box(0.36,0.07,0.05,'#D8F1FF',{ol:false}),-0.22,0.28,0.09),0,0,0.6));   // a glint on the glass
+  if(shut)for(const s of[-1,1])win.add(at(box(0.36,1.3,0.08,shut,{w:0.02}),0.9*s,0,0.02));
+  if(flowers){win.add(at(box(1.3,0.28,0.34,'#B5654C',{w:0.02}),0,-0.78,0.2));
+    for(let i=0;i<4;i++)win.add(at(sph(0.13,FLOWERS[(i+Math.round(x*3))%FLOWERS.length],6,5,{ol:false}),-0.45+i*0.3,-0.56,0.22));}
+  g.add(win);
+}
 function house(x,z,body,roof,meta,extra){
-  const g=new THREE.Group();const w=6,d=5,h=4.2;
+  const g=new THREE.Group();const w=6,d=5,h=4.2,f=d/2;
   g.add(at(box(w,h,d,body),0,h/2,0));
+  g.add(at(box(w+0.24,0.45,d+0.24,'#B8B2C8',{w:0.03}),0,0.22,0));                  // stone footing
+  g.add(at(box(w+0.1,0.14,d+0.1,'#FFFFFF',{ol:false}),0,h-0.07,0));                  // trim under the eaves
   const r=mk(prismGeo(w+0.6,2.2,d+0.6),roof);r.position.y=h;g.add(r);
-  g.add(at(box(1.1,1.9,0.2,'#8A5A44',{w:0.03}),0,0.95,d/2+0.05));
-  for(const wx of[-w/2+1.2,w/2-1.2]){g.add(at(box(1.1,1.1,0.15,'#BFE9FF',{w:0.03}),wx,h*0.62,d/2+0.05));g.add(at(box(1.2,0.3,0.3,'#B5654C',{w:0.02}),wx,h*0.42,d/2+0.2));}
+  g.add(at(box(0.3,0.22,d+0.7,new THREE.Color(roof).multiplyScalar(0.78).getStyle(),{w:0.02}),0,h+2.18,0));   // ridge
+  // front door: frame, door, knob, step, a little porch roof and a lamp
+  g.add(at(box(1.45,2.25,0.14,'#FFFFFF',{w:0.03}),0,1.12,f+0.03));
+  g.add(at(box(1.1,1.95,0.14,'#8A5A44',{w:0.02}),0,1.02,f+0.08));
+  g.add(at(box(0.8,0.5,0.05,'#9FD8F5',{ol:false}),0,1.6,f+0.16));
+  g.add(at(sph(0.07,'#FFD23F',6,5,{ol:false}),0.38,1,f+0.18));
+  g.add(at(box(1.8,0.22,0.8,'#CFC9DD',{w:0.02}),0,0.11,f+0.4));
+  {const pr=mk(prismGeo(2.1,0.55,1.1),roof);pr.position.set(0,2.35,f+0.45);g.add(pr);}
+  g.add(at(sph(0.12,'#FFF2B3',6,5,{w:0.015}),0.95,2.1,f+0.15));
+  // windows: two on the front, one on each side, and a round one up in the gable
+  const shut=new THREE.Color(roof).lerp(new THREE.Color('#FFFFFF'),0.15).getStyle();
+  for(const wx of[-w/2+1.25,w/2-1.25])houseWindow(g,wx,h*0.6,f+0.06,0,shut,true);
+  for(const s of[-1,1])houseWindow(g,s*(w/2+0.06),h*0.6,-0.4,s*Math.PI/2,null,false);
+  houseWindow(g,0,h*0.6,-f-0.06,Math.PI,shut,false);
+  g.add(rot(at(cyl(0.42,0.42,0.12,'#FFFFFF',14,{w:0.02}),0,h+0.85,f+0.32),Math.PI/2,0,0));
+  g.add(rot(at(cyl(0.32,0.32,0.1,'#9FD8F5',14,{ol:false}),0,h+0.85,f+0.36),Math.PI/2,0,0));
+  // chimney with a cap
   g.add(at(box(0.7,1.6,0.7,'#B5654C'),w/2-1.3,h+1.4,-0.9));
+  g.add(at(box(0.9,0.18,0.9,'#8E4A38',{w:0.02}),w/2-1.3,h+2.25,-0.9));
+  // round bushes at the front corners
+  for(const s of[-1,1]){g.add(at(sph(0.55,'#4FA548',8,6),s*(w/2+0.1),0.5,f+0.3));g.add(at(sph(0.38,'#5DBB55',7,5),s*(w/2+0.55),0.4,f-0.2));}
   if(extra)extra(g,h);
   onGround(g,x,z);F(g,meta);rect(x,z,w+0.2,d+0.2);return g;
 }
 function buildHill(){
   const H=[
+    // walls and roof both in the house's own colour, so "the blue house" really looks blue
     [-21,-38,'#FFB3C7','#E84A6F','pink','sweet as candy'],
-    [-10.5,-38,'#A7C7FF','#FFCB47','blue','calm and collected'],
-    [0,-38,'#FFE37A','#5AA9E6','yellow','bright and bubbly'],
-    [10.5,-38,'#A8EBD0','#E8684A','mint','fresh-faced'],
-    [21,-38,'#D5C2FF','#5E4BD8','lavender','dreamy'],
-    [-15,-48.5,'#FFC9A0','#3D8D7A','peach','cozy'],
-    [-4,-48.5,'#F7F4EF','#B24A4A','white','a bit old-fashioned'],
-    [7,-48.5,'#7FD4D4','#F28FAD','teal','cool as a cucumber'],
-    [18,-48.5,'#FF9F80','#2B6CB0','coral','quietly confident'],
+    [-10.5,-38,'#A7C7FF','#3F7FE0','blue','calm and collected'],
+    [0,-38,'#FFE37A','#F2B705','yellow','bright and bubbly'],
+    [10.5,-38,'#A8EBD0','#2FAE7E','mint','fresh-faced'],
+    [21,-38,'#D5C2FF','#7B5BE0','lavender','dreamy'],
   ];
   const roofTops=[];
   H.forEach(([x,z,b,r,cn,vibe],i)=>{
-    house(x,z,b,r,{k:'house',n:`the ${cn} house`,c:[cn],s:'boxy',m:'brick',v:vibe,snd:'knock-knock',u:'live in',e:'🏠🔑'+['🍬','🧊','🌞','🌿','💜','🍑','🕰️','🥒','🐚'][i]},
-      i===5?(g,h)=>{const ant=grp(at(cyl(0.04,0.04,1.6,'#2B2040',4,{ol:false}),0,0.8,0),rot(at(box(1,0.05,0.05,'#2B2040',{ol:false}),0,1.4,0),0,0.4,0));ant.position.set(1.8,h+1.6,-0.9);g.add(ant);}:null);
+    house(x,z,b,r,{k:'house',n:`the ${cn} house`,c:[cn],s:'boxy',m:'brick',v:vibe,snd:'knock-knock',u:'live in',e:'🏠🔑'+['🍬','🧊','🌞','🌿','💜'][i]},
+      i===1?(g,h)=>{const ant=grp(at(cyl(0.04,0.04,1.6,'#2B2040',4,{ol:false}),0,0.8,0),rot(at(box(1,0.05,0.05,'#2B2040',{ol:false}),0,1.4,0),0,0.4,0));ant.position.set(1.8,h+1.6,-0.9);g.add(ant);}:null);
     roofTops.push([x,landH(x,z)+6.45,z]);
   });
   // cat that roams the rooftops

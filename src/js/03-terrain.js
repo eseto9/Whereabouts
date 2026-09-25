@@ -2,7 +2,12 @@
    Island terrain
    ========================================================= */
 const POND={x:-38,z:6,r:6};
-function shoreR(a){return 62+5*Math.sin(3*a+1)+3*Math.cos(5*a);}
+// the countryside: a wide headland to the east where the farm and orchard spread out
+const LOBE={a:0.02,w:0.62,r:48};
+function shoreR(a){
+  let d=a-LOBE.a;d=((d+Math.PI)%TAU+TAU)%TAU-Math.PI;
+  return 62+5*Math.sin(3*a+1)+3*Math.cos(5*a)+LOBE.r*Math.exp(-((d/LOBE.w)**4));
+}
 function edgeDist(x,z){return shoreR(Math.atan2(z,x))-Math.hypot(x,z);}
 function landH(x,z){
   let h=0.3+4.6*smooth(-18,-34,z);
@@ -17,18 +22,24 @@ function groundY(x,z){const d=onDock(x,z);const h=landH(x,z);return d?Math.max(h
 function walkable(x,z){return edgeDist(x,z)>5.8||!!onDock(x,z);}
 
 function buildGround(){
-  const g=new THREE.PlaneGeometry(150,150,120,120); g.rotateX(-Math.PI/2);
+  const g=new THREE.PlaneGeometry(215,165,172,132); g.rotateX(-Math.PI/2); g.translate(25,0,0);
   const pos=g.attributes.position;
   for(let i=0;i<pos.count;i++) pos.setY(i,landH(pos.getX(i),pos.getZ(i)));
   const ng=g.toNonIndexed(); const p=ng.attributes.position;
   const cols=new Float32Array(p.count*3);
   const C=h=>new THREE.Color(h);
-  const wet=C('#E3C27C'),sand=C('#F8DE98'),g1=C('#8AD65E'),g2=C('#74C95A'),g3=C('#9BDE6A'),hill=C('#7DCB5F');
+  const wet=C('#E3C27C'),sand=C('#F8DE98'),dry=C('#EAD08A'),lush=C('#6FC457'),mid=C('#86D25F'),light=C('#A3E06E'),hill=C('#79C85C'),c=new THREE.Color();
+  // soft rolling patches of lighter and darker grass (smooth noise, a touch of per-facet sparkle)
+  const noise=(x,z)=>0.5*Math.sin(x*0.11+Math.sin(z*0.07)*2)*Math.cos(z*0.09-0.6)+0.3*Math.sin((x+z)*0.23+1.7)+0.2*Math.cos(x*0.41-z*0.37);
   for(let i=0;i<p.count;i+=3){
     const cx=(p.getX(i)+p.getX(i+1)+p.getX(i+2))/3, cz=(p.getZ(i)+p.getZ(i+1)+p.getZ(i+2))/3;
-    const e=edgeDist(cx,cz); let c;
-    if(e<6.2)c=wet; else if(e<10.5)c=sand;
-    else{const n=Math.sin(cx*0.8)*Math.cos(cz*0.7)+srand()*0.9;c=n>0.9?g3:n>0.45?g2:(cz<-22?hill:g1);}
+    const e=edgeDist(cx,cz);
+    if(e<6.2)c.copy(wet);
+    else if(e<10.5)c.copy(sand).lerp(dry,smooth(8.5,10.5,e)*0.6);
+    else{const n=noise(cx,cz)+(srand()-0.5)*0.22;
+      c.copy(n<0?lush:mid).lerp(n<0?mid:light,n<0?1+n:n);
+      if(cz<-22)c.lerp(hill,0.35);
+      if(e<12.5)c.lerp(dry,(1-smooth(10.5,12.5,e))*0.5);}
     for(let k=0;k<3;k++){cols[(i+k)*3]=c.r;cols[(i+k)*3+1]=c.g;cols[(i+k)*3+2]=c.b;}
   }
   ng.setAttribute('color',new THREE.BufferAttribute(cols,3));
@@ -63,6 +74,8 @@ function ribbon(pts,w,mat,closed,yo){
   g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));
   g.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2));
   g.setIndex(idx); g.computeVertexNormals();
+  // flat layers on the ground: the higher it sits, the more it's pulled towards the camera, so overlaps never flicker
+  if(!mat.polygonOffset){mat.polygonOffset=true;mat.polygonOffsetFactor=-1-yo*40;mat.polygonOffsetUnits=-2-yo*80;}
   const m=new THREE.Mesh(g,mat); m.receiveShadow=true; scene.add(m); W.pickables.push(m); return m;
 }
 

@@ -9,35 +9,47 @@ const Cull={list:[],t:0};
 function buildCullList(){
   for(const o of W.list){
     if(o.mv||!o.obj.parent||o.obj.parent!==scene)continue;
-    const s=objSize(o);Cull.list.push({obj:o.obj,far:s>3.5?Infinity:GFX.cull*(s<1?0.7:1),ink:o.outlines,inkOn:true});
+    const s=objSize(o);Cull.list.push({obj:o.obj,far:s>3.5?Infinity:GFX.cull*(s<1?0.7:1),ink:o.outlines,inkOn:true,near:s<7?Math.min(s*0.5,1.8)+0.6:0});
   }
 }
 function cullTick(dt){
-  Cull.t-=dt;if(Cull.t>0)return;Cull.t=0.25;const cx=camera.position.x,cz=camera.position.z;
+  Cull.t-=dt;if(Cull.t>0)return;Cull.t=0.1;const cx=camera.position.x,cz=camera.position.z;
   for(const c of Cull.list){
     const p=c.obj.position,d=Math.hypot(p.x-cx,p.z-cz);
     const lit=(revealHi!=null&&W.list[revealHi].obj===c.obj)||(Spy.target!=null&&W.list[Spy.target].obj===c.obj);
-    if(c.far!==Infinity)c.obj.visible=lit||d<c.far;   // the answer is always drawn while it's being shown
+    // trees, lamps and other small things step aside when the camera ends up inside them
+    const inCam=c.near&&d<c.near&&myCode&&P.bean&&camera.position.y<c.obj.position.y+6;
+    c.obj.visible=lit||(!inCam&&d<c.far);   // the answer is always drawn while it's being shown
     const ink=lit||d<GFX.ink;if(ink!==c.inkOn){c.inkOn=ink;for(const m of c.ink)m.visible=ink;}
   }
+}
+// the sun's shadow box follows you (sharper shadows, and the whole island fits the old budget)
+const SH_R=new V3().crossVectors(new V3(0,1,0),SUN_DIR).normalize(),SH_U=new V3().crossVectors(SUN_DIR,SH_R).normalize(),SH_T=new V3();
+function shadowFollow(x,z,ext){
+  const c=sun.shadow.camera;if(c.right!==ext){c.left=c.bottom=-ext;c.right=c.top=ext;c.updateProjectionMatrix();}
+  const tx=2*ext/GFX.smap,t=SH_T.set(x,0,z);
+  const a=Math.round(t.dot(SH_R)/tx)*tx,b=Math.round(t.dot(SH_U)/tx)*tx,d=t.dot(SUN_DIR);   // whole texels along the light's own axes
+  t.copy(SH_R).multiplyScalar(a).addScaledVector(SH_U,b).addScaledVector(SUN_DIR,d);
+  sun.target.position.copy(t);sun.position.copy(t).addScaledVector(SUN_DIR,140);
 }
 let last=performance.now(),gullT=4,frameN=0;
 function frame(now){
   requestAnimationFrame(frame);frameN++;
-  const dt=Math.min(0.05,(now-last)/1000);last=now;const t=wclock(),ts=now/1000;
+  const dt=Math.min(0.1,(now-last)/1000);last=now;const t=wclock(),ts=now/1000;
   for(const m of W.movers)m(t,dt);
   waterMat.uniforms.t.value=ts%1000;
   W.foam.material.opacity=0.45+0.25*Math.sin(ts*1.3);W.foam.scale.setScalar(1+0.004*Math.sin(ts*1.3));
   if(myCode&&P.bean){
-    updatePlayer(dt);updateCamera(dt);sendPresence();updateRemotes(dt,ts);
-    if(P.bean.userData.body)animBean(P.bean,{an:P.an,em:P.em,emAt:P.emAt},ts);
-    hostTick();updateHUDTimers();updateCompass();
+    {const n=Math.ceil(dt/0.034);for(let i=0;i<n;i++)updatePlayer(dt/n);}updateCamera(dt);sendPresence();updateRemotes(dt,ts);
+    if(P.bean.userData.body)animBean(P.bean,{an:P.an,em:P.em,emAt:P.emAt,hb:P.board,tk:P.tk,mv:Math.hypot(P.vel.x,P.vel.z)>1},ts);
+    hostTick();updateHUDTimers();updateCompass();goldTick(ts,dt);
     gullT-=dt;if(gullT<=0){gullT=5+Math.random()*9;const v=clamp((P.pos.z-18)/30,0,1);if(v>0.05)sfx.gull(v);}
     if(redT>0){redT-=dt;}
-  }else{
+  }else if(!window.__camHold){
     const a=ts*0.05;camera.position.set(Math.cos(a)*80,36,Math.sin(a)*80);camera.lookAt(0,3,0);camera.fov=55;camera.updateProjectionMatrix();
   }
-  updateFx(dt);cullTick(dt);
+  if(myCode&&P.bean)shadowFollow(P.pos.x+Math.sin(P.yaw)*18,P.pos.z+Math.cos(P.yaw)*18,62);else shadowFollow(22,0,105);
+  updateFx(dt);cullTick(dt);mapTick(dt);
   if(GFX.shadow&&!renderer.shadowMap.autoUpdate&&frameN%2===0)renderer.shadowMap.needsUpdate=true;
   renderer.render(scene,camera);
 }

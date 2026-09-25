@@ -16,7 +16,7 @@ function optRow(el,list,slot,cur,onPick){
   });
   if(list.some(([k])=>!isOwned(slot+':'+k))){
     const m=document.createElement('button');m.className='opt more';m.textContent='🛍️ More';m.setAttribute('aria-label','More in the shop');
-    m.onclick=()=>showTab('shop',slot);el.appendChild(m);
+    m.onclick=()=>showTab('shop',list.some(([k])=>!PRICES[slot+':'+k]&&UNLOCKS[slot+':'+k]&&!isOwned(slot+':'+k))&&!list.some(([k])=>PRICES[slot+':'+k]&&!isOwned(slot+':'+k))?'earn':slot);el.appendChild(m);
   }
 }
 function patSwatch(k,col){
@@ -45,13 +45,41 @@ function renderWear(){
   optRow($('#shoeOpts'),SHOES,'shoe',myFit.s,k=>{myFit.s=k;});
   toneRow($('#shoeTone'),'Shoe',myFit.sc,i=>{myFit.sc=i;});
   optRow($('#xOpts'),EXTRAS,'x',myFit.x,k=>{myFit.x=k;});
+  optRow($('#rideOpts'),RIDES,'ride',myFit.r,k=>{myFit.r=k;});
 }
 
 /* ---------- shop: everything that costs coins ---------- */
-const SHOP_SECTIONS=[['top','Tops'],['bot','Bottoms'],['shoe','Shoes'],['pat','Patterns'],['x','Extras']];
-const wearing=k=>{const {slot,id}=itemInfo(k);return slot==='top'?myFit.t===id:slot==='bot'?myFit.b===id:slot==='shoe'?myFit.s===id:slot==='x'?myFit.x===id:myFit.tp===id||myFit.bp===id;};
+const SHOP_SECTIONS=[['ride','Rides'],['top','Tops'],['bot','Bottoms'],['shoe','Shoes'],['x','Extras'],['pat','Patterns']];
+const wearing=k=>{const {slot,id}=itemInfo(k);return slot==='top'?myFit.t===id:slot==='bot'?myFit.b===id:slot==='shoe'?myFit.s===id:slot==='x'?myFit.x===id:slot==='ride'?myFit.r===id:myFit.tp===id||myFit.bp===id;};
+// a picture of k on your bean (or its emoji when there's no 3D preview)
+function itemArt(k,art){
+  const it=itemInfo(k);
+  if(it.slot==='pat')art.appendChild(patSwatch(it.id,CLOTH_COLORS[myFit.tc]));
+  else{const src=shopThumb(k);if(src){const im=document.createElement('img');im.src=src;im.alt='';art.appendChild(im);art.classList.add('pic');}else art.textContent=it.emoji;}
+}
+// items you earn by playing: what it takes, and how far along you are
+function renderEarn(list){
+  const sec=document.createElement('section');sec.id='shop-earn';
+  const h=document.createElement('h3');h.textContent='🏆 Earn these by playing';sec.appendChild(h);
+  const grid=document.createElement('div');grid.className='cards';
+  for(const [k,u] of Object.entries(UNLOCKS)){
+    const it=itemInfo(k),owned=isOwned(k),have=Math.min(u.n,statOf(u.goal));
+    const card=document.createElement('div');card.className='card tier-earn'+(Setup.trial===k?' trying':'')+(owned?'':' locked');
+    const art=document.createElement('button');art.className='art';art.setAttribute('aria-label',`Try on ${itemName(k)}`);itemArt(k,art);
+    art.onclick=()=>{Setup.trial=Setup.trial===k?null:k;renderSetup();};
+    const nm=document.createElement('b');nm.textContent=it.name;
+    const tl=document.createElement('small');tl.textContent=u.text;
+    const bar=document.createElement('div');bar.className='goalbar';const fill=document.createElement('i');fill.style.width=(100*have/u.n)+'%';bar.appendChild(fill);
+    const act=document.createElement('button');act.className='btn buy';
+    if(owned){act.textContent=wearing(k)?'Wearing ✓':'Wear';act.disabled=wearing(k);act.onclick=()=>{myFit=withItem(myFit,k);Setup.trial=null;saveMe();renderSetup();};}
+    else{act.textContent=`🔒 ${have} / ${u.n}`;act.disabled=true;act.setAttribute('aria-label',`${itemName(k)}: ${u.text}. ${have} of ${u.n} so far`);}
+    card.append(art,nm,tl);if(!owned)card.appendChild(bar);card.appendChild(act);grid.appendChild(card);
+  }
+  sec.appendChild(grid);list.appendChild(sec);
+}
 function renderShop(){
   const list=$('#shopList');list.textContent='';
+  renderEarn(list);
   for(const [slot,title] of SHOP_SECTIONS){
     const keys=Object.keys(PRICES).filter(k=>k.startsWith(slot+':')).sort((a,b)=>PRICES[a]-PRICES[b]);
     const sec=document.createElement('section');sec.id='shop-'+slot;
@@ -61,7 +89,7 @@ function renderShop(){
       const it=itemInfo(k),tier=tierOf(k),owned=isOwned(k),price=PRICES[k];
       const card=document.createElement('div');card.className=`card tier-${tier}`+(Setup.trial===k?' trying':'');
       const art=document.createElement('button');art.className='art';art.setAttribute('aria-label',`Try on ${itemName(k)}`);
-      if(slot==='pat')art.appendChild(patSwatch(it.id,CLOTH_COLORS[myFit.tc]));else art.textContent=it.emoji;
+      itemArt(k,art);
       art.onclick=()=>{Setup.trial=Setup.trial===k?null:k;renderSetup();};
       const nm=document.createElement('b');nm.textContent=it.name;
       const tl=document.createElement('small');tl.textContent=TIER_NAMES[tier];
@@ -79,13 +107,13 @@ function renderShop(){
   }
 }
 function renderSetup(){
-  for(const [t,btn] of [['wear',$('#tabWear')],['shop',$('#tabShop')],['pedia',$('#tabPedia')]])btn.setAttribute('aria-selected',Setup.tab===t);
-  $('#wearView').hidden=Setup.tab!=='wear';$('#shopView').hidden=Setup.tab!=='shop';$('#pediaView').hidden=Setup.tab!=='pedia';
+  for(const [t,btn] of [['wear',$('#tabWear')],['shop',$('#tabShop')],['pedia',$('#tabPedia')],['lead',$('#tabLead')]])btn.setAttribute('aria-selected',Setup.tab===t);
+  $('#wearView').hidden=Setup.tab!=='wear';$('#shopView').hidden=Setup.tab!=='shop';$('#pediaView').hidden=Setup.tab!=='pedia';$('#leadView').hidden=Setup.tab!=='lead';
   if(Setup.tab!=='shop')Setup.trial=null;
-  if(Setup.tab==='wear')renderWear();else if(Setup.tab==='shop')renderShop();else renderPedia();
+  if(Setup.tab==='wear')renderWear();else if(Setup.tab==='shop')renderShop();else if(Setup.tab==='lead'){lbWatch();renderLeaders();}else renderPedia();
   renderCoins();
   const tn=$('#tryNote');
-  tn.textContent=Setup.trial?`Trying on ${itemName(Setup.trial)}${isOwned(Setup.trial)?'':` (🪙 ${PRICES[Setup.trial]})`}`:'';
+  tn.textContent=Setup.trial?`Trying on ${itemName(Setup.trial)}${isOwned(Setup.trial)?'':UNLOCKS[Setup.trial]?` (🏆 ${UNLOCKS[Setup.trial].text.toLowerCase()})`:` (🪙 ${PRICES[Setup.trial]})`}`:'';
   Prev.dress();
 }
 function showTab(tab,slot){
@@ -95,6 +123,7 @@ function showTab(tab,slot){
 $('#tabWear').addEventListener('click',()=>showTab('wear'));
 $('#tabShop').addEventListener('click',()=>showTab('shop'));
 $('#tabPedia').addEventListener('click',()=>showTab('pedia'));
+$('#tabLead').addEventListener('click',()=>showTab('lead'));
 
 /* ---------- Townpedia: a page for every findable thing ---------- */
 const AREA_NAMES={square:'Town Square',market:'Market Street',harbor:'Harbor',hill:'Hillside',park:'Park',farm:'Farm',orchard:'Orchard',sea:'At sea',sky:'In the sky'};
@@ -149,7 +178,7 @@ $('#coinBtn').addEventListener('click',()=>openWardrobe('shop'));
 $('#doneBtn').addEventListener('click',closeWardrobe);
 
 // Live 3D preview of your Wanderbean (its own little renderer); shows a shop item you're trying on
-const Prev={r:null,scene:new THREE.Scene(),cam:new THREE.PerspectiveCamera(26,150/210,0.1,50),bean:null,running:false,
+const Prev={r:null,scene:new THREE.Scene(),cam:new THREE.PerspectiveCamera(26,150/210,0.1,50),bean:null,running:false,yaw:0,held:-1e9,drag:null,
   dress(){
     if(!this.r)return;
     if(this.bean)this.scene.remove(this.bean);
@@ -161,11 +190,26 @@ const Prev={r:null,scene:new THREE.Scene(),cam:new THREE.PerspectiveCamera(26,15
     if($('#title').hidden){this.running=false;return;}
     requestAnimationFrame(t=>this.frame(t));
     const ts=now/1000;
-    this.bean.rotation.y=Math.sin(ts*0.7)*0.9;
-    animBean(this.bean,{an:0},ts);
+    // you can spin it by dragging; a few seconds after letting go it starts gently swaying again
+    const idle=clamp((now-this.held-2500)/1500,0,1);this.bean.rotation.y=this.yaw+Math.sin(ts*0.7)*0.9*idle;
+    const tr=Setup.trial||'';animBean(this.bean,{an:0,hb:tr.startsWith('ride:')},ts);
     this.r.render(this.scene,this.cam);
   },
 };
+// shop pictures: your bean wearing (or riding) each item, drawn once with the preview's renderer
+const Thumbs=new Map();
+function shopThumb(k){
+  if(!Prev.r)return null;
+  const key=k+'|'+myCol+'|'+JSON.stringify(myFit);if(Thumbs.has(key))return Thumbs.get(key);
+  const slot=k.split(':')[0],b=makeBean(myCol,withItem(myFit,k),'',Prev.scene);b.userData.tag.visible=false;
+  const riding=slot==='ride';animBean(b,{an:0,hb:riding},1.3);b.rotation.y=riding?0.9:slot==='x'?2.4:0.45;
+  if(Prev.bean)Prev.bean.visible=false;
+  const c=Prev.cam,p=c.position.clone();
+  if(slot==='shoe'){c.position.set(0,0.9,3.2);c.lookAt(0,0.25,0);}else if(riding){c.position.set(0,2,6.8);c.lookAt(0,0.95,0);}else{c.position.set(0,1.4,5.3);c.lookAt(0,1.02,0);}
+  Prev.r.render(Prev.scene,c);const url=Prev.r.domElement.toDataURL('image/png');
+  c.position.copy(p);c.lookAt(0,1.12,0);Prev.scene.remove(b);if(Prev.bean)Prev.bean.visible=true;
+  if(Thumbs.size>200)Thumbs.clear();Thumbs.set(key,url);return url;
+}
 try{
   Prev.r=new THREE.WebGLRenderer({canvas:$('#beanPrev'),antialias:true,alpha:true});
   Prev.r.setPixelRatio(Math.min(window.devicePixelRatio||1,2));Prev.r.setSize(150,210,false);
@@ -173,6 +217,11 @@ try{
   const l=new THREE.DirectionalLight(0xFFE0B0,1.0);l.position.set(-2,3,4);Prev.scene.add(l);
   Prev.cam.position.set(0,1.45,7);Prev.cam.lookAt(0,1.12,0);
 }catch(e){Prev.r=null;$('#beanPrev').hidden=true;}
+{const cv=$('#beanPrev');cv.style.touchAction='none';cv.style.cursor='grab';
+ cv.addEventListener('pointerdown',e=>{Prev.drag={id:e.pointerId,x:e.clientX};Prev.held=performance.now();if(Prev.bean)Prev.yaw=Prev.bean.rotation.y;try{cv.setPointerCapture(e.pointerId);}catch(err){}cv.style.cursor='grabbing';});
+ cv.addEventListener('pointermove',e=>{const d=Prev.drag;if(!d||d.id!==e.pointerId)return;Prev.yaw+=(e.clientX-d.x)*0.025;d.x=e.clientX;Prev.held=performance.now();});
+ const up=e=>{if(Prev.drag&&Prev.drag.id===e.pointerId){Prev.drag=null;Prev.held=performance.now();cv.style.cursor='grab';}};
+ cv.addEventListener('pointerup',up);cv.addEventListener('pointercancel',up);}
 renderSetup();
 
 function genCode(){const A='ABCDEFGHJKMNPQRSTUVWXYZ';let s='';for(let i=0;i<4;i++)s+=A[Math.floor(Math.random()*A.length)];return s;}
@@ -188,12 +237,18 @@ function joinRoom(code,fresh){
   P.pos.set(sr(-3,3),0,sr(5,8));P.pos.y=groundY(P.pos.x,P.pos.z);P.yaw=Math.PI;P.face=Math.PI;
   $('#title').hidden=true;$('#hud').hidden=false;
   sys(Net.room?`You’re in room ${code}. Share the code so friends can join.`:`Playing solo in room ${code}.`);
-  sys('Find things to earn 🪙 coins (faster finds earn more), then spend them at the Bean Boutique in Market Street.');
-  sendPresence(true);renderAll();tryLock();
+  sys('Find things to earn 🪙 coins (faster finds earn more), then spend them at Frock & Roll, the clothes shop on Market Street.');
+  if(Net.room)sys('📨 Tap your room code (top left) to send friends an invite link.');
+  sendPresence(true);renderAll();tryLock();checkUnlocks();
   roomDocWatch(code);if(fresh)roomDocPrune();
   if(Net.web)setTimeout(()=>{if(myCode===code&&Net.room.status()!=='online')sys('Can’t reach the online server right now, so this room is solo. Try again in a minute.');},12000);
 }
 $('#createBtn').addEventListener('click',()=>joinRoom(genCode(),true));
+// today's challenge: a fresh room, already set up for it (friends can still join before you start)
+$('#dailyBtn').addEventListener('click',()=>{
+  joinRoom(genCode(),true);
+  setTimeout(()=>{if(myCode&&amHost()&&G.phase==='lobby'){Object.assign(G,{hs:false,teams:false,daily:todayKey(),mode:'game',total:DAILY_N,diff:'normal'});commit();}},250);
+});
 $('#joinBtn').addEventListener('click',()=>{const c=clean($('#codeIn').value,4).toUpperCase();if(!/^[A-Z]{4}$/.test(c)){$('#netNote').textContent='Room codes are 4 letters, like KMPX.';$('#netNote').classList.add('err');$('#codeIn').focus();return;}joinRoom(c);});
 $('#codeIn').addEventListener('keydown',e=>{if(e.key==='Enter')$('#joinBtn').click();});
 $('#codeIn').addEventListener('input',e=>{e.target.value=e.target.value.toUpperCase().replace(/[^A-Z]/g,'');});

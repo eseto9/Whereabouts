@@ -8,8 +8,9 @@ function districtAt(x,y,z){
   const e=edgeDist(x,z);
   if(e<5.2)return z>28?'harbor':'sea';
   if(Math.hypot(x,z)<17)return 'square';
-  if(x>28&&z>14&&z<=30)return 'farm';if(x>28&&z<-14&&z>-30)return 'orchard';
-  if(z>28)return 'harbor';if(z<-17)return 'hill';if(x>13)return 'market';if(x<-13)return 'park';
+  if(x>58&&z<-3)return 'orchard';if(x>58)return 'farm';
+  if(z>28)return 'harbor';if(z<-17||(x>22&&z<-14.5))return 'hill';   // Windmill Green counts as Hillside
+  if(x>13)return 'market';if(x<-13)return 'park';
   return 'square';
 }
 function heightPhrase(c){const g=Math.max(landH(c.x,c.z),-0.45);const r=c.y-g;if(r>3.4)return 'up high';if(r<0.75)return 'down low';return 'around eye level';}

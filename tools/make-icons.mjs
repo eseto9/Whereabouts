@@ -6,8 +6,8 @@ import zlib from 'node:zlib';
 import { ROOT } from './assemble.mjs';
 
 const hex = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
-const BG = hex('#FFC83D'), INK = hex('#2B2040'), BEAN = hex('#FF5D73'), BELLY = hex('#FFA3B1'),
-  WHITE = hex('#FFFFFF'), PUPIL = hex('#1D1533'), GOLD = hex('#E3B04B'), LENS = hex('#9FE8FF'), BLUSH = hex('#FF8FA8');
+const BG = hex('#FFC83D'), INK = hex('#2B2040'), BEAN = hex('#5CC8E6'), WHITE = hex('#FFFFFF'), PUPIL = hex('#1D1533'),
+  BLUSH = hex('#FFB0C4'), MOUTH = hex('#C8324F'), TONGUE = hex('#FF8FA8');
 
 // shapes in a 0..1 square, y down; each returns a signed distance (negative inside)
 const circle = (cx, cy, r) => (x, y) => Math.hypot(x - cx, y - cy) - r;
@@ -17,21 +17,25 @@ const segment = (ax, ay, bx, by, r) => (x, y) => {
   const px = x - ax, py = y - ay, dx = bx - ax, dy = by - ay, t = Math.max(0, Math.min(1, (px * dx + py * dy) / (dx * dx + dy * dy)));
   return Math.hypot(px - dx * t, py - dy * t) - r;
 };
-const OL = 0.022; // ink outline width
+const below = (f, y0) => (x, y) => Math.max(f(x, y), y0 - y);   // only the part of a shape under a line
+const OL = 0.018; // ink outline width
 
-// painter's order: [shape, fill, outline?]
+// the Wanderbean mascot: an egg-shaped body with a big white face, waving
 const layers = [
-  [segment(0.5, 0.25, 0.5, 0.12, 0.012), INK, false],       // antenna stalk
-  [capsule(0.5, 0.1, 0.1, 0.075), GOLD, true],             // spyglass (seen end-on, fat)
-  [circle(0.5, 0.1, 0.035), LENS, false],
-  [capsule(0.5, 0.42, 0.66, 0.25), BEAN, true],            // body
-  [ellipse(0.5, 0.72, 0.16, 0.13), BELLY, false],
-  [ellipse(0.42, 0.42, 0.065, 0.08), WHITE, true],         // eyes
-  [ellipse(0.58, 0.42, 0.065, 0.08), WHITE, true],
-  [circle(0.435, 0.43, 0.034), PUPIL, false],
-  [circle(0.595, 0.43, 0.034), PUPIL, false],
-  [ellipse(0.33, 0.53, 0.04, 0.022), BLUSH, false],
-  [ellipse(0.67, 0.53, 0.04, 0.022), BLUSH, false],
+  [ellipse(0.39, 0.875, 0.085, 0.05), BEAN, true],              // feet
+  [ellipse(0.61, 0.875, 0.085, 0.05), BEAN, true],
+  [segment(0.285, 0.52, 0.245, 0.69, 0.062), BEAN, true],       // arm down
+  [segment(0.715, 0.5, 0.82, 0.3, 0.062), BEAN, true],          // arm up, waving
+  [capsule(0.5, 0.43, 0.62, 0.255), BEAN, true],                // body
+  [ellipse(0.5, 0.405, 0.185, 0.145), WHITE, false],            // face
+  [ellipse(0.435, 0.39, 0.03, 0.04), PUPIL, false],             // eyes
+  [ellipse(0.565, 0.39, 0.03, 0.04), PUPIL, false],
+  [circle(0.425, 0.374, 0.011), WHITE, false],
+  [circle(0.555, 0.374, 0.011), WHITE, false],
+  [ellipse(0.37, 0.445, 0.03, 0.016), BLUSH, false],            // cheeks
+  [ellipse(0.63, 0.445, 0.03, 0.016), BLUSH, false],
+  [below(ellipse(0.5, 0.445, 0.045, 0.045), 0.445), MOUTH, false],   // open smile
+  [below(ellipse(0.5, 0.475, 0.026, 0.014), 0.465), TONGUE, false],
 ];
 
 function render(size) {
@@ -42,7 +46,7 @@ function render(size) {
     let c = BG.slice();
     const mix = (col, a) => { if (a > 0) c = c.map((v, k) => v + (col[k] - v) * a); };
     for (const [sdf, fill, ol] of layers) {
-      const d = sdf(x, y);
+      const K = 0.84, d = sdf(0.5 + (x - 0.5) / K, 0.55 + (y - 0.5) / K) * K;   // shrunk a little so round icon masks don't clip the feet
       if (ol) mix(INK, Math.max(0, Math.min(1, 0.5 - (d - OL) / aa)));
       mix(fill, Math.max(0, Math.min(1, 0.5 - d / aa)));
     }

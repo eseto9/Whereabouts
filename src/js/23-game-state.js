@@ -4,12 +4,21 @@
 const PROUND_MS=120000,PICK_MS=45000,REVEAL_MS=5500,UNSOLVED_MS=8000,SESSION_PER=75000;
 // start: clue lines shown up front; lines: most lines a game clue grows to
 const DIFF={
-  easy:{label:'Easy',hint:15000,round:120000,mult:0.75,start:2,lines:4},
+  easy:{label:'Easy',hint:15000,round:120000,mult:0.5,start:2,lines:4},
   normal:{label:'Normal',hint:20000,round:95000,mult:1,start:1,lines:4},
-  hard:{label:'Hard',hint:28000,round:90000,mult:1.5,start:1,lines:3},
+  hard:{label:'Hard',hint:28000,round:90000,mult:2,start:1,lines:3},
 };
 const diffOf=()=>DIFF[G.diff]||DIFF.normal;
-function freshState(){return {teams:false,tm:{},ts:{r:0,b:0},hs:false,hider:null,hiderName:'',pts:{},pnames:{},tp:null,phase:'lobby',mode:'alt',total:8,diff:'normal',daily:'',idx:0,score:0,found:0,streak:0,best:0,sessLeft:0,roundLeft:0,hintIn:0,lines:[],kind:'game',spy:null,spyName:'',mv:false,finds:[],reveal:null,dailyMsg:'',r:0,v:0,hostPeer:null};}
+// points: a clue is worth 100 when it appears, 1 less every second, 15 less for every extra hint,
+// never under 10; then Easy halves it and Hard doubles it. A wrong guess costs the team 10 (×difficulty).
+const PTS={base:100,perSec:1,hint:15,min:10,wrong:10};
+const clueMult=()=>G.kind==='game'&&!G.daily?diffOf().mult:1;
+const clueHints=()=>Math.max(0,G.lines.length-(G.kind==='game'?(G.daily?DIFF.normal:diffOf()).start:1));
+function clueWorth(secs,hints,mult){return Math.round(Math.max(PTS.min,PTS.base-PTS.perSec*Math.floor(secs)-PTS.hint*hints)*mult);}
+// Red vs Blue: the first team to find this many wins (or whoever has most when the clues run out)
+const TEAM_GOAL=5,TEAM_MAX=15;
+const teamWon=()=>G.teams&&((G.tf.r||0)>=TEAM_GOAL||(G.tf.b||0)>=TEAM_GOAL);
+function freshState(){return {teams:false,tm:{},ts:{r:0,b:0},hs:false,hider:null,hiderName:'',pts:{},pnames:{},tp:null,phase:'lobby',mode:'game',hot:false,shuf:true,seed:0,total:7,tf:{r:0,b:0},diff:'normal',daily:'',idx:0,score:0,found:0,streak:0,best:0,sessLeft:0,roundLeft:0,hintIn:0,lines:[],kind:'game',spy:null,spyName:'',mv:false,finds:[],reveal:null,dailyMsg:'',r:0,v:0,hostPeer:null};}
 let G=freshState();G._recv=Date.now();
 const H={target:null,obj:null,ladder:null,fmtLast:null,used:new Set(),plan:null,wrong:false,sessEnd:0,roundEnd:0,nextHintAt:0,pickEnd:0,revealEnd:0,clueStart:0,spyRot:0,lastSync:0,lastTick:0,findIdx:-1};
 const Spy={target:null,r:-1};
@@ -23,8 +32,10 @@ const liveLeft=f=>Math.max(0,(G[f]||0)-(Date.now()-(G._recv||Date.now())));
 function commit(){
   const now=Date.now();
   G.hostPeer=myPeer();G.v=(G.v||0)+1;
+  // clue counts from before (6 or 8, or a finished Red vs Blue or daily game) go back to a normal choice
+  if(G.phase==='lobby'&&!G.daily&&!G.teams&&!G.hs&&![5,7,10].includes(G.total))G.total=7;
   const inPlay=G.phase!=='lobby'&&G.phase!=='recap';
-  if(G.teams&&inPlay)assignTeams();
+  if(G.teams&&G.phase!=='recap')assignTeams();
   G.sessLeft=inPlay?Math.max(0,H.sessEnd-now):0;
   G.roundLeft=!inPlay?0:Math.max(0,(G.phase==='pick'?H.pickEnd:G.phase==='reveal'?H.revealEnd:G.phase==='hide'?H.hideEnd:G.phase==='seek'?H.seekEnd:H.roundEnd)-now);
   G.hintIn=(G.phase==='clue'&&G.kind==='game'&&G.lines.length<diffOf().lines)?Math.max(0,H.nextHintAt-now):0;
@@ -40,16 +51,17 @@ function adoptState(s,recv){
   G.lines=Array.isArray(G.lines)?G.lines.slice(0,4).map(x=>clean(x,160)):[];
   G.finds=Array.isArray(G.finds)?G.finds.slice(0,12):[];
   if(!DIFF[G.diff])G.diff='normal';
+  if(G.mode!=='player')G.mode='game';G.hot=!!G.hot;G.shuf=G.shuf!==false;G.seed=(Math.floor(+G.seed)||0)>>>0;
   G.tp=Array.isArray(G.tp)&&G.tp.length===2&&G.tp.every(Number.isFinite)?G.tp:null;
   G.daily=typeof G.daily==='string'&&/^\d{4}-\d\d-\d\d$/.test(G.daily)?G.daily:'';
-  G.dailyMsg=clean(G.dailyMsg,80);
+  G.dailyMsg=clean(G.dailyMsg,80);G.dsecs=clamp(Math.round(+G.dsecs||0),0,36000);
   const peerMap=(o,ok)=>o&&typeof o==='object'&&!Array.isArray(o)?Object.fromEntries(Object.entries(o).slice(0,32).filter(([k,v])=>typeof k==='string'&&ok(v))):{};
-  G.teams=!!G.teams;G.tm=peerMap(G.tm,v=>v==='r'||v==='b');G.ts={r:Math.max(0,+(G.ts&&G.ts.r)||0),b:Math.max(0,+(G.ts&&G.ts.b)||0)};
+  G.teams=!!G.teams;G.tm=peerMap(G.tm,v=>v==='r'||v==='b');G.ts={r:Math.max(0,+(G.ts&&G.ts.r)||0),b:Math.max(0,+(G.ts&&G.ts.b)||0)};G.tf={r:clamp(Math.floor(+(G.tf&&G.tf.r)||0),0,99),b:clamp(Math.floor(+(G.tf&&G.tf.b)||0),0,99)};
   G.hs=!!G.hs;G.hider=typeof G.hider==='string'?G.hider:null;G.hiderName=clean(G.hiderName);
   G.pts=peerMap(G.pts,v=>Number.isFinite(v));G.pnames=Object.fromEntries(Object.entries(peerMap(G.pnames,v=>typeof v==='string')).map(([k,v])=>[k,clean(v)]));
   if(G.reveal&&typeof G.reveal==='object'){const R=G.reveal;
     R.bonus=Array.isArray(R.bonus)?R.bonus.slice(0,4).map(x=>clean(x,40)):[];
-    R.gp=clean(R.gp,40);R.team=R.team==='r'||R.team==='b'?R.team:'';R.hs=!!R.hs;R.why=clean(R.why,8);R.secs=clamp(Math.round(+R.secs||0),0,600);R.coins=clamp(Math.round(+R.coins||0),0,60);}
+    R.gp=clean(R.gp,40);R.team=R.team==='r'||R.team==='b'?R.team:'';R.hs=!!R.hs;R.why=clean(R.why,8);R.secs=clamp(Math.round(+R.secs||0),0,600);R.coins=clamp(Math.round(+R.coins||0),0,100);R.wrong=clamp(Math.round(+R.wrong||0),0,99);}
   renderAll();
 }
 function hostTick(){
@@ -92,18 +104,20 @@ function startGame(){
   H.used=new Set();H.spyRot=Math.floor(Math.random()*6);
   if(G.hs){startHideSeek();return;}
   if(G.daily){G.mode='game';G.total=DAILY_N;G.diff='normal';G.teams=false;H.plan=dailyPlan(G.daily);}else H.plan=null;
-  if(G.teams){G.mode='game';G.tm={};G.ts={r:0,b:0};assignTeams();}
-  G.score=0;G.found=0;G.streak=0;G.best=0;G.finds=[];G.dailyMsg='';G.idx=-1;
+  if(G.teams){G.mode='game';G.ts={r:0,b:0};G.tf={r:0,b:0};G.total=TEAM_MAX;assignTeams();}   // keeps the teams picked in the lobby
+  G.hot=G.diff==='easy'&&!G.daily;
+  // a new layout for this game (the daily one is the same for everyone that day), before any clue is picked
+  G.seed=G.shuf?(G.daily?hashSeed('daily:'+G.daily):1+Math.floor(Math.random()*2147483646)):0;shuffleTown(G.seed);   // the hot/cold meter starts on for Easy; the host can switch it any time
+  G.score=0;G.found=0;G.streak=0;G.best=0;G.finds=[];G.dailyMsg='';G.idx=-1;G.dsecs=0;H.gameStart=Date.now();
   H.sessEnd=Date.now()+G.total*SESSION_PER;
   nextClue();
 }
 function nextClue(){
   const now=Date.now();G.idx++;
-  if(G.idx>=G.total||now>=H.sessEnd){endGame();return;}
+  if(G.idx>=G.total||now>=H.sessEnd||teamWon()){endGame();return;}
   const n=players().length;let kind='game';
   if(!G.daily&&!G.teams){
     if(G.mode==='player'&&n>=2)kind='player';
-    if(G.mode==='alt'&&n>=2&&G.idx%2===1)kind='player';
   }
   if(kind==='game')startGameClue();else startPick();
 }
@@ -120,9 +134,9 @@ function startGameClue(){
     const recent=new Set(recentAnswers()),fresh=pool.filter(o=>!recent.has(o.n));if(fresh.length>=3)pool=fresh;
     o=pick(pool);ladder=makeLadder(o,H.fmtLast,G.diff==='easy'?EASY_FMTS:G.diff==='hard'?HARD_FMTS:null);
   }
-  H.used.add(o.id);H.target=o.id;H.obj=o;H.ladder=ladder;H.fmtLast=ladder.fmt;H.wrong=false;rememberAnswer(o.n);
-  // Easy shows a warmer/colder meter, so its players get the target's spot on the map
-  if(G.diff==='easy'&&!G.daily){const c=objCenter(o);G.tp=[Math.round(c.x*10)/10,Math.round(c.z*10)/10];}else G.tp=null;
+  H.used.add(o.id);H.target=o.id;H.obj=o;H.ladder=ladder;H.fmtLast=ladder.fmt;H.wrong=false;H.wrongN=0;rememberAnswer(o.n);
+  // the warmer/colder meter: on from the start on Easy, and for anyone still stuck after a while otherwise
+  {const c=objCenter(o);G.tp=[Math.round(c.x*10)/10,Math.round(c.z*10)/10];}
   const lines=[ladder.l1];if(D.start>1)lines.push(ladder.l2);
   Object.assign(G,{kind:'game',spy:null,spyName:'',lines,mv:!!o.mv,phase:'clue',reveal:null});G.r++;
   H.clueStart=now;H.roundEnd=now+D.round;H.nextHintAt=now+D.hint;
@@ -131,7 +145,7 @@ function startGameClue(){
 function startPick(){
   const now=Date.now();const ps=sortedPlayers();const sp=ps[H.spyRot++%ps.length];
   Object.assign(G,{tp:null,kind:'player',spy:sp.peer,spyName:clean(sp.presence.name)||'Someone',lines:[],mv:false,phase:'pick',reveal:null});G.r++;
-  H.target=null;H.obj=null;H.wrong=false;H.pickEnd=now+PICK_MS;
+  H.target=null;H.obj=null;H.wrong=false;H.wrongN=0;H.pickEnd=now+PICK_MS;
   commit();
 }
 function revealUnsolved(){
@@ -149,27 +163,27 @@ function assignTeams(){
   for(const p of ps)if(!tm[p.peer]){const t=r<=b?'r':'b';tm[p.peer]=t;t==='r'?r++:b++;}
   G.tm=tm;
 }
-function endGame(){G.phase='recap';H.target=null;commit();if(G.daily)dailyAfterGame();}
+function endGame(){G.phase='recap';H.target=null;if(G.daily)G.dsecs=Math.round((Date.now()-(H.gameStart||Date.now()))/1000);commit();if(G.daily)dailyAfterGame();}
 
 function applyResultAsHost(d,now){
   if(G.phase!=='clue')return;
   const o=W.list[d.id];
   if(d.ok){
-    const game=G.kind==='game',D=game?diffOf():DIFF.normal;
-    const hintsUsed=Math.max(0,G.lines.length-(game?D.start:1));
-    const base=game?Math.max(20,100-20*hintsUsed)+(o.mv?25:0):Math.max(20,100-15*hintsUsed);
-    let pts=Math.round(base*D.mult/5)*5;const bonus=[];
-    if(now-H.clueStart<15000){pts+=20;bonus.push('⚡ Quick +20');}
-    if(!H.wrong){pts+=10;bonus.push('✨ No wrong guesses +10');}
-    G.streak=(G.streak||0)+1;G.best=Math.max(G.best||0,G.streak);
-    if(G.streak>=2){const s=10*(Math.min(G.streak,6)-1);pts+=s;bonus.push(`🔥 ${G.streak} in a row +${s}`);}
+    const ms=now-H.clueStart,hintsUsed=clueHints(),mult=clueMult();
+    const pts=clueWorth(ms/1000,hintsUsed,mult),bonus=[];
+    if(hintsUsed)bonus.push(`💡 ${hintsUsed} hint${hintsUsed>1?'s':''} −${PTS.hint*hintsUsed*mult}`);
+    if(H.wrongN)bonus.push(`❌ ${H.wrongN} wrong −${PTS.wrong*H.wrongN*mult}`);
     G.score+=pts;G.found++;
-    const team=G.teams?G.tm[d.gp]:null;if(team)G.ts[team]=(G.ts[team]||0)+pts;
-    G.finds.push({c:(G.lines[0]||'').slice(0,110),n:o.n,by:clean(d.gn),p:pts});
-    const ms=now-H.clueStart;
-    G.phase='reveal';G.reveal={found:true,id:d.id,name:o.n,by:clean(d.gn),pts,bonus,team:team||'',gp:String(d.gp||''),secs:Math.round(ms/1000),coins:coinsFor(ms,D.mult)};
+    const team=G.teams?G.tm[d.gp]:null;if(team){G.ts[team]=(G.ts[team]||0)+pts;G.tf[team]=(G.tf[team]||0)+1;}
+    G.finds.push({c:(G.lines[0]||'').slice(0,110),n:o.n,by:clean(d.gn),p:pts,s:Math.round(ms/1000)});
+    G.phase='reveal';G.reveal={found:true,id:d.id,name:o.n,by:clean(d.gn),pts,bonus,team:team||'',gp:String(d.gp||''),secs:Math.round(ms/1000),coins:coinsFor(pts)};
     H.revealEnd=now+REVEAL_MS;commit();
-  }else{H.sessEnd-=5000;H.wrong=true;commit();}
+  }else{
+    // a wrong guess costs the guesser's team points straight away
+    const pen=PTS.wrong*clueMult(),team=G.teams?G.tm[d.gp]:null;
+    G.score=Math.max(0,G.score-pen);if(team)G.ts[team]=Math.max(0,(G.ts[team]||0)-pen);
+    H.wrong=true;H.wrongN=(H.wrongN||0)+1;commit();
+  }
 }
 
 /* ---------- message handling ---------- */
@@ -203,7 +217,7 @@ function onMsg(topic,m){
         if(!celebrated.has(G.r)){celebrated.add(G.r);celebrate(o,d);}
         if(amHost())applyResultAsHost(d,now);
       }else{
-        if(d.gp===myPeer()){sfx.thud();buzz(120);flashOutline(o,RED,0.8);toast(`Not the ${o.n.replace(/^(the|a|an) /,'')}\n−5 seconds`);redFlash();}
+        if(d.gp===myPeer()){sfx.thud();buzz(120);flashOutline(o,RED,0.8);toast(`Not the ${o.n.replace(/^(the|a|an) /,'')}\n−${PTS.wrong*clueMult()} points`);redFlash();}
         else sys(`${clean(d.gn)} tried ${o.n}. Nope!`);
         if(amHost())applyResultAsHost(d,now);
       }
@@ -221,7 +235,7 @@ function onMsg(topic,m){
     case 'wb.spyclue':{
       if(!amHost()||m.peer!==G.spy||G.phase!=='pick'||d.r!==G.r)return;
       const txt=clean(d.t,120);if(!txt)return;
-      G.lines=[txt];G.mv=!!d.mv;G.phase='clue';H.wrong=false;H.roundEnd=now+PROUND_MS;H.clueStart=now;commit();break;
+      G.lines=[txt];G.mv=!!d.mv;G.phase='clue';H.wrong=false;H.wrongN=0;H.roundEnd=now+PROUND_MS;H.clueStart=now;commit();break;
     }
     case 'wb.tag':{onTag(m,d);break;}
     case 'wb.spyhint':{
