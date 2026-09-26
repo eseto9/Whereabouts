@@ -4,6 +4,9 @@ The page opens on a game picker: **Whereabouts**, the co-op I spy game, or **Cro
 a single-player trading game on the same island. How they fit together, and Crowded Market's
 design, are in [DESIGN.md](DESIGN.md).
 
+
+To upload: on GitHub, open the docs folder, click Add file → Upload files, drag in index.html, then Commit changes. Check the Actions tab for the green check.
+
 ```
 src/index.html       page template (markup; <!-- @styles --> and <!-- @app --> markers)
 src/css/NN-*.css     styles, concatenated in filename order
