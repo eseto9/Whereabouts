@@ -6,7 +6,7 @@ const SENS=0.00432;   // 1× here is what used to be 1.8×
 // look speed, set on the title screen (0.5× to 3×), kept per device
 const Look={mult:1};
 try{const v=parseFloat(localStorage.getItem('wb.sens'));if(v>=0.5&&v<=3)Look.mult=v;}catch(e){}
-function inGame(){return !!myCode||CMG.on;}   // in a Whereabouts room, or trading in Crowded Market
+function inGame(){return !!myCode;}
 function look(dx,dy){
   const k=SENS*Look.mult;P.yaw-=dx*k;P.pitch=clamp(P.pitch+dy*k,-0.25,1.15);
 }
@@ -51,7 +51,6 @@ window.addEventListener('keydown',e=>{
   if(e.code==='Space') e.preventDefault();
   if(e.repeat) return;
   audioInit();
-  if(CMG.on){cmKey(e);return;}   // Crowded Market has its own keys
   if(e.code==='Enter'){e.preventDefault();if(locked)document.exitPointerLock();$('#chatInput').focus();}
   else if(e.code==='KeyQ') doPing();
   else if(e.code==='KeyM') toggleMute();
@@ -62,7 +61,7 @@ window.addEventListener('keydown',e=>{
   else if(e.code==='KeyH') $('#side').hidden=!$('#side').hidden;
   else if(/^Digit[1-5]$/.test(e.code)) emote(['wave','point','dance','shrug','cheer'][+e.code.slice(5)-1]);
 });
-window.addEventListener('keyup',e=>{keys[e.code]=false;if(CMG.on)cmKeyUp(e);});
+window.addEventListener('keyup',e=>{keys[e.code]=false;});
 window.addEventListener('blur',()=>{for(const k in keys)keys[k]=false;});
 function emote(name){P.em=name;P.emAt=Date.now();sendPresence(true);}
 

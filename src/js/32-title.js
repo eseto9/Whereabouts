@@ -1,7 +1,7 @@
 /* =========================================================
    Title screen: your name, your wardrobe and the shop
    ========================================================= */
-{const wm=$('#title .wordmark');'Whereabouts'.split('').forEach((ch,i)=>{const s=document.createElement('span');s.textContent=ch;s.style.animationDelay=(i*0.05)+'s';s.setAttribute('aria-hidden','true');wm.appendChild(s);});}
+{const wm=$('.wordmark');'Whereabouts'.split('').forEach((ch,i)=>{const s=document.createElement('span');s.textContent=ch;s.style.animationDelay=(i*0.05)+'s';s.setAttribute('aria-hidden','true');wm.appendChild(s);});}
 try{const s=JSON.parse(localStorage.getItem('wb.me')||'{}');if(s.name)$('#nameIn').value=clean(s.name);if(BEAN_COLORS.includes(s.col))myCol=s.col;if(s.fit)myFit=ownFit(s.fit);}catch(e){}
 const Setup={tab:'wear',trial:null};   // trial: a shop item being tried on (not bought)
 let noteT=null;
