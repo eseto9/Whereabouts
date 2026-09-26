@@ -1,4 +1,8 @@
-# Whereabouts
+# Whereabouts (and Crowded Market)
+
+The page opens on a game picker: **Whereabouts**, the co-op I spy game, or **Crowded Market**,
+a single-player trading game on the same island. How they fit together, and Crowded Market's
+design, are in [DESIGN.md](DESIGN.md).
 
 ```
 src/index.html       page template (markup; <!-- @styles --> and <!-- @app --> markers)
@@ -8,6 +12,8 @@ tools/build.mjs      → dist/whereabouts.html (the Claude artifact) and docs/in
 tools/dev-server.mjs local test server (live reload, source maps)
 tools/make-icons.mjs → docs/icon-*.png, the home-screen icons (run it after changing the icon)
 dev/mock-*.js        stand-ins for the artifact runtime: claude.use(), room, db and user
+src/js/35-39b-cm-*   Crowded Market (35–37 are plain simulation code that also runs in Node)
+tests/               `npm test`: Crowded Market's simulation and AI, no browser needed
 ```
 
 The JS files are consecutive slices of one closure, not ES modules: every top-level
@@ -17,6 +23,7 @@ number that puts it after the things it uses at load time.
 ```
 npm run dev     # http://localhost:5178
 npm run build   # dist/whereabouts.html + docs/index.html
+npm test        # Crowded Market simulation tests
 ```
 
 Test URLs (combine with `&`):
@@ -31,6 +38,7 @@ Test URLs (combine with `&`):
 | `?drop=wb.state` | never deliver these room topics (tests the late-joiner backup) |
 | `?room=x` | a separate room |
 | `?user=ana` | a fixed viewer id (default: each tab is a different person) |
+| `?market` | Crowded Market's setup screen (`?market=play` starts a day straight away) |
 
 In the console, `__mockDb.dump()` shows the fake db and `__mockDb.clear()` empties it;
 clear `localStorage` too to reset coins and bought clothes (tabs on one origin share it).

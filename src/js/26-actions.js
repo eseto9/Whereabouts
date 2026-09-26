@@ -5,6 +5,7 @@ const mouseNdc={x:0,y:0};
 window.addEventListener('mousemove',e=>{const r=canvas.getBoundingClientRect();mouseNdc.x=((e.clientX-r.left)/r.width)*2-1;mouseNdc.y=-((e.clientY-r.top)/r.height)*2+1;});
 const shortName=o=>o.n.replace(/^(the|a|an) /,'');
 function clickAt(nx,ny){
+  if(CMG.on){cmClick(nx,ny);return;}
   if(hideClick(nx,ny))return;
   const h=rayAt(nx,ny,W.ray);const fid=h?h.object.userData.fid:undefined;
   if(G.phase==='pick'&&G.spy===myPeer()){if(fid!==undefined)spySelect(fid);return;}
